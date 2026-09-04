@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>AI Tools // ScribeNest</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+<body>
+
+<nav class="dashboard-nav">
+
+    <div class="logo">
+        SCRIBENEST
+    </div>
+
+    <div>
+
+        <a href="{{ url_for('dashboard') }}">
+            Dashboard
+        </a>
+
+        <a href="{{ url_for('vault') }}">
+            Vault
+        </a>
+
+    </div>
+
+</nav>
+
+
+<main class="ai-page">
+
+    <p class="eyebrow">
+        SCRIBENEST // AI STUDY ASSISTANT
+    </p>
+
+    <h1>
+        Make Your Notes Intelligent.
+    </h1>
+
+    <p class="ai-description">
+
+        Paste your study material below and let
+        ScribeNest AI help you summarize, revise
+        and understand it.
+
+    </p>
+
+
+    {% with messages = get_flashed_messages(
+        with_categories=true
+    ) %}
+
+        {% for category, message in messages %}
+
+            <div class="message {{ category }}">
+                {{ message }}
+            </div>
+
+        {% endfor %}
+
+    {% endwith %}
+
+
+    <form method="POST">
+
+        <label>
+            Study Material
+        </label>
+
+        <textarea
+            name="content"
+            rows="15"
+            placeholder="Paste your notes here..."
+            required
+        ></textarea>
+
+
+        <div class="ai-buttons">
+
+            <button
+                name="action"
+                value="summary"
+            >
+                📝 SUMMARIZE
+            </button>
+
+
+            <button
+                name="action"
+                value="questions"
+            >
+                ❓ GENERATE QUESTIONS
+            </button>
+
+
+            <button
+                name="action"
+                value="flashcards"
+            >
+                🧠 FLASHCARDS
+            </button>
+
+        </div>
+
+    </form>
+
+
+    {% if result %}
+
+        <section class="ai-result">
+
+            <div class="eyebrow">
+                SCRIBENEST AI // RESULT
+            </div>
+
+            <div class="result-text">
+                {{ result }}
+            </div>
+
+        </section>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>

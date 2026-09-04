@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Vault // ScribeNest</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+<body>
+
+<nav class="dashboard-nav">
+
+    <div class="logo">
+        SCRIBENEST
+    </div>
+
+    <div>
+
+        <a href="{{ url_for('dashboard') }}">
+            Dashboard
+        </a>
+
+        <a href="{{ url_for('vault') }}">
+            Vault
+        </a>
+
+        <a href="{{ url_for('ai_tools') }}">
+            AI Tools
+        </a>
+
+    </div>
+
+</nav>
+
+
+<main class="dashboard">
+
+    <p class="eyebrow">
+        SCRIBENEST // SHARED VAULT
+    </p>
+
+    <h1>
+        Explore Notes
+    </h1>
+
+
+    <form
+        action="{{ url_for('search') }}"
+        method="GET"
+        class="search-form"
+    >
+
+        <input
+            type="text"
+            name="q"
+            value="{{ query }}"
+            placeholder="Search subjects, topics or notes..."
+        >
+
+        <button>
+            SEARCH
+        </button>
+
+    </form>
+
+
+    {% if notes %}
+
+        <div class="notes-grid">
+
+            {% for note in notes %}
+
+                <div class="note-card">
+
+                    <span class="subject">
+                        {{ note["subject"] }}
+                    </span>
+
+                    <h3>
+                        {{ note["title"] }}
+                    </h3>
+
+                    <p>
+                        {{ note["content"][:160] }}
+                        ...
+                    </p>
+
+                    <p class="author">
+                        By {{ note["author"] }}
+                    </p>
+
+                    <a
+                        href="{{ url_for(
+                            'view_note',
+                            note_id=note['id']
+                        ) }}"
+                    >
+                        OPEN →
+                    </a>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty">
+
+            <h2>
+                No notes found.
+            </h2>
+
+            <p>
+                Try another search.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>

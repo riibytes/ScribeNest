@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login // ScribeNest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="auth-container">
+
+    <div class="auth-box">
+
+        <div class="logo">SCRIBENEST</div>
+
+        <p class="subtitle">
+            YOUR ACADEMIC KNOWLEDGE HUB
+        </p>
+
+        <h1>Welcome Back</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="message {{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST">
+
+            <label>Email</label>
+
+            <input
+                type="email"
+                name="email"
+                required
+            >
+
+            <label>Password</label>
+
+            <input
+                type="password"
+                name="password"
+                required
+            >
+
+            <button type="submit">
+                LOGIN
+            </button>
+
+        </form>
+
+        <p class="switch">
+            Don't have an account?
+            <a href="{{ url_for('register') }}">
+                Register
+            </a>
+        </p>
+
+        <a
+            class="back"
+            href="{{ url_for('home') }}"
+        >
+            ← Back to ScribeNest
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+</html>

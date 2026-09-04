@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Edit Note // ScribeNest</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+<body>
+
+<nav class="dashboard-nav">
+
+    <div class="logo">
+        SCRIBENEST
+    </div>
+
+    <a href="{{ url_for('dashboard') }}">
+        ← Dashboard
+    </a>
+
+</nav>
+
+
+<main class="editor">
+
+    <p class="eyebrow">
+        SCRIBENEST // EDIT NOTE
+    </p>
+
+    <h1>
+        Edit Note
+    </h1>
+
+
+    <form method="POST">
+
+        <label>
+            Title
+        </label>
+
+        <input
+            type="text"
+            name="title"
+            value="{{ note['title'] }}"
+            required
+        >
+
+
+        <label>
+            Subject
+        </label>
+
+        <input
+            type="text"
+            name="subject"
+            value="{{ note['subject'] }}"
+            required
+        >
+
+
+        <label>
+            Tags
+        </label>
+
+        <input
+            type="text"
+            name="tags"
+            value="{{ note['tags'] }}"
+        >
+
+
+        <label>
+            Content
+        </label>
+
+        <textarea
+            name="content"
+            rows="18"
+            required
+        >{{ note['content'] }}</textarea>
+
+
+        <label class="checkbox">
+
+            <input
+                type="checkbox"
+                name="is_public"
+
+                {% if note["is_public"] %}
+                    checked
+                {% endif %}
+            >
+
+            Make this note public
+
+        </label>
+
+
+        <button
+            class="primary-button"
+            type="submit"
+        >
+            UPDATE NOTE
+        </button>
+
+    </form>
+
+
+    <form
+        method="POST"
+        action="{{ url_for(
+            'delete_note',
+            note_id=note['id']
+        ) }}"
+        onsubmit="
+            return confirm(
+                'Are you sure you want to delete this note?'
+            );
+        "
+    >
+
+        <button
+            class="danger-button"
+            type="submit"
+        >
+            DELETE NOTE
+        </button>
+
+    </form>
+
+</main>
+
+</body>
+</html>

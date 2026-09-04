@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Create Note // ScribeNest</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+<body>
+
+<nav class="dashboard-nav">
+
+    <div class="logo">
+        SCRIBENEST
+    </div>
+
+    <a href="{{ url_for('dashboard') }}">
+        ← Dashboard
+    </a>
+
+</nav>
+
+
+<main class="editor">
+
+    <p class="eyebrow">
+        SCRIBENEST // NEW NOTE
+    </p>
+
+    <h1>
+        Create a Note
+    </h1>
+
+
+    <form method="POST">
+
+        <label>
+            Title
+        </label>
+
+        <input
+            type="text"
+            name="title"
+            placeholder="e.g. Process Scheduling"
+            required
+        >
+
+
+        <label>
+            Subject
+        </label>
+
+        <input
+            type="text"
+            name="subject"
+            placeholder="e.g. Operating Systems"
+            required
+        >
+
+
+        <label>
+            Tags
+        </label>
+
+        <input
+            type="text"
+            name="tags"
+            placeholder="os, scheduling, fcfs"
+        >
+
+
+        <label>
+            Content
+        </label>
+
+        <textarea
+            name="content"
+            rows="18"
+            placeholder="Write your notes here..."
+            required
+        ></textarea>
+
+
+        <label class="checkbox">
+
+            <input
+                type="checkbox"
+                name="is_public"
+            >
+
+            Make this note public
+
+        </label>
+
+
+        <button
+            class="primary-button"
+            type="submit"
+        >
+            SAVE NOTE
+        </button>
+
+    </form>
+
+</main>
+
+</body>
+</html>

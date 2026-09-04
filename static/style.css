@@ -1,0 +1,1029 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+body {
+    background: #05070c;
+    color: #e2e8f0;
+
+    font-family:
+        "Plus Jakarta Sans",
+        Arial,
+        sans-serif;
+
+    min-height: 100vh;
+}
+
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+
+/* ==========================================
+   NAVIGATION
+========================================== */
+
+.dashboard-nav {
+
+    height: 75px;
+
+    padding:
+        0 50px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    border-bottom:
+        1px solid #1e293b;
+
+    background:
+        rgba(5, 7, 12, 0.95);
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 100;
+
+}
+
+
+.dashboard-nav > div:last-child {
+
+    display: flex;
+
+    gap: 25px;
+
+}
+
+
+.dashboard-nav a {
+
+    color: #94a3b8;
+
+    font-size: 0.8rem;
+
+}
+
+
+.dashboard-nav a:hover {
+
+    color: #38bdf8;
+
+}
+
+
+.logo {
+
+    color: white;
+
+    font-family: "Cinzel", serif;
+
+    font-weight: 700;
+
+    letter-spacing: 0.18em;
+
+}
+
+
+/* ==========================================
+   AUTH
+========================================== */
+
+.auth-container {
+
+    min-height: 100vh;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    padding: 30px;
+
+}
+
+
+.auth-box {
+
+    width: 100%;
+
+    max-width: 450px;
+
+    padding: 50px;
+
+    background: #080b12;
+
+    border:
+        1px solid #1e293b;
+
+    border-radius: 10px;
+
+}
+
+
+.auth-box h1 {
+
+    margin:
+        35px 0 25px;
+
+    font-family: "Cinzel", serif;
+
+}
+
+
+.subtitle {
+
+    margin-top: 10px;
+
+    color: #64748b;
+
+    font-family:
+        "JetBrains Mono",
+        monospace;
+
+    font-size: 0.65rem;
+
+    letter-spacing: 0.12em;
+
+}
+
+
+/* ==========================================
+   FORMS
+========================================== */
+
+form {
+
+    width: 100%;
+
+}
+
+
+label {
+
+    display: block;
+
+    margin:
+        20px 0 8px;
+
+    color: #94a3b8;
+
+    font-size: 0.85rem;
+
+}
+
+
+input,
+textarea {
+
+    width: 100%;
+
+    padding: 14px 16px;
+
+    background: #0f172a;
+
+    border:
+        1px solid #1e293b;
+
+    color: white;
+
+    border-radius: 5px;
+
+    outline: none;
+
+    font-family:
+        "Plus Jakarta Sans",
+        sans-serif;
+
+}
+
+
+textarea {
+
+    resize: vertical;
+
+    line-height: 1.7;
+
+}
+
+
+input:focus,
+textarea:focus {
+
+    border-color: #38bdf8;
+
+    box-shadow:
+        0 0 15px
+        rgba(56, 189, 248, 0.12);
+
+}
+
+
+button {
+
+    cursor: pointer;
+
+    border: none;
+
+}
+
+
+.auth-box button {
+
+    width: 100%;
+
+    margin-top: 25px;
+
+    padding: 14px;
+
+    background: #38bdf8;
+
+    color: #020617;
+
+    font-weight: bold;
+
+    letter-spacing: 0.1em;
+
+}
+
+
+.switch {
+
+    text-align: center;
+
+    margin-top: 25px;
+
+    color: #64748b;
+
+}
+
+
+.switch a {
+
+    color: #38bdf8;
+
+}
+
+
+.back {
+
+    display: block;
+
+    margin-top: 25px;
+
+    text-align: center;
+
+    color: #64748b;
+
+}
+
+
+/* ==========================================
+   MESSAGES
+========================================== */
+
+.message {
+
+    padding: 12px 15px;
+
+    margin:
+        15px 0;
+
+    border-radius: 5px;
+
+    font-size: 0.85rem;
+
+}
+
+
+.message.success {
+
+    background:
+        rgba(34, 197, 94, 0.1);
+
+    border:
+        1px solid rgba(34, 197, 94, 0.3);
+
+    color: #86efac;
+
+}
+
+
+.message.error {
+
+    background:
+        rgba(239, 68, 68, 0.1);
+
+    border:
+        1px solid rgba(239, 68, 68, 0.3);
+
+    color: #fca5a5;
+
+}
+
+
+/* ==========================================
+   DASHBOARD
+========================================== */
+
+.dashboard {
+
+    max-width: 1200px;
+
+    margin: auto;
+
+    padding:
+        70px 30px;
+
+}
+
+
+.welcome {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 30px;
+
+}
+
+
+.welcome h1,
+.dashboard > h1 {
+
+    font-family: "Cinzel", serif;
+
+    margin-top: 10px;
+
+}
+
+
+.eyebrow {
+
+    color: #38bdf8;
+
+    font-family:
+        "JetBrains Mono",
+        monospace;
+
+    font-size: 0.7rem;
+
+    letter-spacing: 0.15em;
+
+}
+
+
+/* ==========================================
+   BUTTONS
+========================================== */
+
+.primary-button {
+
+    display: inline-block;
+
+    padding:
+        13px 22px;
+
+    background: #38bdf8;
+
+    color: #020617;
+
+    font-family:
+        "JetBrains Mono",
+        monospace;
+
+    font-size: 0.75rem;
+
+    font-weight: bold;
+
+}
+
+
+.primary-button:hover {
+
+    background: #7dd3fc;
+
+}
+
+
+.danger-button {
+
+    padding:
+        12px 20px;
+
+    margin-top: 20px;
+
+    background:
+        #7f1d1d;
+
+    color: #fecaca;
+
+}
+
+
+/* ==========================================
+   STATS
+========================================== */
+
+.stats {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 20px;
+
+    margin-top: 50px;
+
+}
+
+
+.stat {
+
+    padding: 25px;
+
+    border:
+        1px solid #1e293b;
+
+    background: #080b12;
+
+}
+
+
+.stat span {
+
+    display: block;
+
+    color: #64748b;
+
+    font-family:
+        "JetBrains Mono",
+        monospace;
+
+    font-size: 0.7rem;
+
+}
+
+
+.stat strong {
+
+    display: block;
+
+    margin-top: 10px;
+
+    font-size: 2rem;
+
+    font-family: "Cinzel", serif;
+
+}
+
+
+/* ==========================================
+   SEARCH
+========================================== */
+
+.search-form {
+
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 40px;
+
+}
+
+
+.search-form button {
+
+    padding:
+        0 25px;
+
+    background: #38bdf8;
+
+    color: #020617;
+
+    font-weight: bold;
+
+}
+
+
+/* ==========================================
+   NOTES
+========================================== */
+
+.section-header {
+
+    margin:
+        60px 0 20px;
+
+}
+
+
+.section-header h2 {
+
+    font-family: "Cinzel", serif;
+
+}
+
+
+.notes-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 20px;
+
+}
+
+
+.note-card {
+
+    padding: 25px;
+
+    background: #080b12;
+
+    border:
+        1px solid #1e293b;
+
+    border-radius: 7px;
+
+    transition: 0.25s;
+
+}
+
+
+.note-card:hover {
+
+    border-color: #38bdf8;
+
+    transform:
+        translateY(-3px);
+
+}
+
+
+.note-card h3 {
+
+    font-family: "Cinzel", serif;
+
+    color: white;
+
+    margin:
+        18px 0 12px;
+
+}
+
+
+.note-card p {
+
+    color: #64748b;
+
+    line-height: 1.6;
+
+    font-size: 0.88rem;
+
+}
+
+
+.note-top {
+
+    display: flex;
+
+    justify-content: space-between;
+
+}
+
+
+.subject {
+
+    color: #38bdf8;
+
+    font-family:
+        "JetBrains Mono",
+        monospace;
+
+    font-size: 0.7rem;
+
+}
+
+
+.public {
+
+    color: #86efac;
+
+    font-size: 0.65rem;
+
+}
+
+
+.private {
+
+    color: #64748b;
+
+    font-size: 0.65rem;
+
+}
+
+
+.tags {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 7px;
+
+    margin-top: 18px;
+
+}
+
+
+.tags span {
+
+    padding:
+        4px 8px;
+
+    background: #0f172a;
+
+    color: #64748b;
+
+    font-size: 0.7rem;
+
+    border-radius: 3px;
+
+}
+
+
+.note-actions {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    margin-top: 25px;
+
+}
+
+
+.note-actions a {
+
+    color: #38bdf8;
+
+    font-size: 0.7rem;
+
+    font-family:
+        "JetBrains Mono",
+        monospace;
+
+}
+
+
+.note-actions button {
+
+    background: none;
+
+    color: #facc15;
+
+    font-size: 1.2rem;
+
+}
+
+
+/* ==========================================
+   EDITOR
+========================================== */
+
+.editor {
+
+    max-width: 850px;
+
+    margin: auto;
+
+    padding:
+        70px 30px;
+
+}
+
+
+.editor h1 {
+
+    font-family: "Cinzel", serif;
+
+    margin:
+        10px 0 30px;
+
+}
+
+
+.checkbox {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+
+.checkbox input {
+
+    width: auto;
+
+}
+
+
+/* ==========================================
+   NOTE VIEW
+========================================== */
+
+.note-view {
+
+    max-width: 900px;
+
+    margin: auto;
+
+    padding:
+        80px 30px;
+
+}
+
+
+.note-view h1 {
+
+    font-family: "Cinzel", serif;
+
+    font-size: 3rem;
+
+    margin:
+        20px 0 10px;
+
+}
+
+
+.note-meta {
+
+    display: flex;
+
+    gap: 20px;
+
+    color: #38bdf8;
+
+    font-family:
+        "JetBrains Mono",
+        monospace;
+
+    font-size: 0.7rem;
+
+}
+
+
+.author {
+
+    color: #64748b;
+
+}
+
+
+.note-content {
+
+    margin:
+        40px 0;
+
+    padding: 35px;
+
+    border:
+        1px solid #1e293b;
+
+    background: #080b12;
+
+    white-space: pre-wrap;
+
+    line-height: 1.8;
+
+    color: #cbd5e1;
+
+}
+
+
+/* ==========================================
+   EMPTY
+========================================== */
+
+.empty {
+
+    text-align: center;
+
+    padding:
+        100px 20px;
+
+    border:
+        1px dashed #1e293b;
+
+    margin-top: 40px;
+
+}
+
+
+.empty h2 {
+
+    font-family: "Cinzel", serif;
+
+}
+
+
+.empty p {
+
+    color: #64748b;
+
+    margin:
+        15px 0 30px;
+
+}
+
+
+/* ==========================================
+   AI
+========================================== */
+
+.ai-page {
+
+    max-width: 1000px;
+
+    margin: auto;
+
+    padding:
+        70px 30px;
+
+}
+
+
+.ai-page h1 {
+
+    font-family: "Cinzel", serif;
+
+    font-size: 3rem;
+
+    margin:
+        15px 0;
+
+}
+
+
+.ai-description {
+
+    color: #64748b;
+
+    max-width: 700px;
+
+    line-height: 1.7;
+
+}
+
+
+.ai-buttons {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 12px;
+
+    margin-top: 20px;
+
+}
+
+
+.ai-buttons button {
+
+    padding:
+        13px 18px;
+
+    background: #0f172a;
+
+    color: #38bdf8;
+
+    border:
+        1px solid #1e293b;
+
+}
+
+
+.ai-buttons button:hover {
+
+    border-color: #38bdf8;
+
+}
+
+
+.ai-result {
+
+    margin-top: 50px;
+
+    padding: 30px;
+
+    border:
+        1px solid #1e293b;
+
+    background: #080b12;
+
+}
+
+
+.result-text {
+
+    margin-top: 20px;
+
+    white-space: pre-wrap;
+
+    line-height: 1.8;
+
+    color: #cbd5e1;
+
+}
+
+
+/* ==========================================
+   MOBILE
+========================================== */
+
+@media (max-width: 800px) {
+
+    .dashboard-nav {
+
+        padding: 0 20px;
+
+    }
+
+
+    .dashboard-nav > div:last-child {
+
+        gap: 10px;
+
+    }
+
+
+    .stats,
+    .notes-grid {
+
+        grid-template-columns: 1fr;
+
+    }
+
+
+    .welcome {
+
+        flex-direction: column;
+
+        align-items: flex-start;
+
+    }
+
+
+    .search-form {
+
+        flex-direction: column;
+
+    }
+
+
+    .search-form button {
+
+        padding: 13px;
+
+    }
+
+
+    .note-view h1,
+    .ai-page h1 {
+
+        font-size: 2rem;
+
+    }
+
+
+    .auth-box {
+
+        padding: 30px 20px;
+
+    }
+
+}

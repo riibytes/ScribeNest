@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>{{ note["title"] }} // ScribeNest</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+<body>
+
+<nav class="dashboard-nav">
+
+    <div class="logo">
+        SCRIBENEST
+    </div>
+
+    <a href="{{ url_for('dashboard') }}">
+        ← Dashboard
+    </a>
+
+</nav>
+
+
+<main class="note-view">
+
+    <div class="note-meta">
+
+        <span>
+            {{ note["subject"] }}
+        </span>
+
+        {% if note["is_public"] %}
+            <span>
+                PUBLIC
+            </span>
+        {% else %}
+            <span>
+                PRIVATE
+            </span>
+        {% endif %}
+
+    </div>
+
+
+    <h1>
+        {{ note["title"] }}
+    </h1>
+
+
+    <p class="author">
+        Created by {{ note["author"] }}
+    </p>
+
+
+    {% if note["tags"] %}
+
+        <div class="tags">
+
+            {% for tag in note["tags"].split(",") %}
+
+                <span>
+                    #{{ tag.strip() }}
+                </span>
+
+            {% endfor %}
+
+        </div>
+
+    {% endif %}
+
+
+    <div class="note-content">
+
+        {{ note["content"] }}
+
+    </div>
+
+
+    <!-- ATTACHED FILE PREVIEW / DOWNLOAD SECTION -->
+    {% if note["file_path"] %}
+        <div class="file-attachment-box" style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+            
+            <p style="margin-bottom: 10px; font-weight: bold; color: #cbd5e1;">
+                📎 Attached File: {{ note["file_name"] }}
+            </p>
+
+            {% if note["file_type"] == "image" %}
+                <!-- Display Image Directly -->
+                <div style="margin-top: 15px;">
+                    <img 
+                        src="{{ url_for('uploaded_file', filename=note['file_path']) }}" 
+                        alt="{{ note['title'] }}" 
+                        style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);"
+                    >
+                </div>
+            {% elif note["file_type"] == "pdf" %}
+                <!-- PDF Download / Open Link -->
+                <div style="margin-top: 15px; display: flex; gap: 15px; flex-wrap: wrap;">
+                    <a 
+                        href="{{ url_for('uploaded_file', filename=note['file_path']) }}" 
+                        target="_blank" 
+                        class="primary-button" 
+                        style="text-decoration: none; padding: 10px 20px; background: #3b82f6; color: white; border-radius: 8px; display: inline-block;"
+                    >
+                        📄 Open PDF in Browser
+                    </a>
+                    <a 
+                        href="{{ url_for('uploaded_file', filename=note['file_path']) }}" 
+                        download 
+                        style="text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border-radius: 8px; display: inline-block;"
+                    >
+                        ⬇️ Download PDF
+                    </a>
+                </div>
+            {% endif %}
+
+        </div>
+    {% endif %}
+
+
+    {% if note["user_id"] == session["user_id"] %}
+
+        <div style="margin-top: 30px;">
+            <a
+                class="primary-button"
+                href="{{ url_for(
+                    'edit_note',
+                    note_id=note['id']
+                ) }}"
+            >
+                EDIT NOTE
+            </a>
+        </div>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>
