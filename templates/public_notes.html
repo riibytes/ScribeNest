@@ -69,6 +69,32 @@
     </form>
 
 
+    <!-- PROGRAM FILTER FORM -->
+
+    <form
+        action="{{ url_for('vault') }}"
+        method="GET"
+        style="margin-bottom: 30px;"
+    >
+        <select
+            name="program"
+            onchange="this.form.submit()"
+            style="width: 100%; max-width: 450px; padding: 12px 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.25); color: white; outline: none;"
+        >
+            <option value="">📂 Filter by Program / Branch (All)</option>
+            {% for category, progs in programs.items() %}
+                <optgroup label="{{ category }}">
+                    {% for prog in progs %}
+                        <option value="{{ prog }}" {% if selected_program == prog %}selected{% endif %}>
+                            {{ prog }}
+                        </option>
+                    {% endfor %}
+                </optgroup>
+            {% endfor %}
+        </select>
+    </form>
+
+
     {% if notes %}
 
         <div class="notes-grid">
@@ -80,6 +106,12 @@
                     <span class="subject">
                         {{ note["subject"] }}
                     </span>
+
+                    {% if note["program"] %}
+                        <small style="display: block; color: #94a3b8; margin-bottom: 8px;">
+                            {{ note["program"] }}
+                        </small>
+                    {% endif %}
 
                     <h3>
                         {{ note["title"] }}
@@ -93,6 +125,15 @@
                     <p class="author">
                         By {{ note["author"] }}
                     </p>
+
+                    <!-- If note has an attached file in Supabase, show a direct link to it -->
+                    {% if note["file_path"] %}
+                        <div style="margin-bottom: 10px;">
+                            <a href="{{ note['file_path'] }}" target="_blank" style="color: #38bdf8; font-size: 0.9rem; text-decoration: none;">
+                                📎 View Attachment
+                            </a>
+                        </div>
+                    {% endif %}
 
                     <a
                         href="{{ url_for(
@@ -118,7 +159,7 @@
             </h2>
 
             <p>
-                Try another search.
+                Try another search or program filter.
             </p>
 
         </div>

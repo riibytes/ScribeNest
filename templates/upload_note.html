@@ -63,6 +63,7 @@
         }
 
         input,
+        select,
         textarea {
             width: 100%;
             padding: 14px;
@@ -75,8 +76,14 @@
         }
 
         input:focus,
+        select:focus,
         textarea:focus {
             border-color: #94a3b8;
+        }
+
+        select option {
+            background: #1e293b;
+            color: white;
         }
 
         textarea {
@@ -159,7 +166,6 @@
         }
 
         @media (max-width: 600px) {
-
             body {
                 padding: 20px 15px;
             }
@@ -248,6 +254,24 @@
             >
 
 
+            <!-- PROGRAM / BRANCH -->
+
+            <label for="program">
+                Program / Branch
+            </label>
+
+            <select id="program" name="program">
+                <option value="">-- Select Your Program --</option>
+                {% for category, progs in programs.items() %}
+                    <optgroup label="{{ category }}">
+                        {% for prog in progs %}
+                            <option value="{{ prog }}">{{ prog }}</option>
+                        {% endfor %}
+                    </optgroup>
+                {% endfor %}
+            </select>
+
+
             <!-- TAGS -->
 
             <label for="tags">
@@ -288,10 +312,10 @@
                 </div>
 
                 <div class="upload-text">
-                    Upload your PDF or image
+                    Upload your document or image
                     <br>
                     <small>
-                        PDF, PNG, JPG, JPEG, GIF or WEBP
+                        PDF, Images, Word (DOC/DOCX), PowerPoint (PPT/PPTX)
                         · Maximum 20 MB
                     </small>
                 </div>
@@ -300,7 +324,7 @@
                     type="file"
                     id="file"
                     name="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+                    accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.ppt,.pptx"
                     required
                 >
 

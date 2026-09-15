@@ -64,6 +64,22 @@
 
 
         <label>
+            Program / Branch
+        </label>
+
+        <select name="program" style="width: 100%; padding: 14px; margin-bottom: 22px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.25); color: white; outline: none;">
+            <option value="">-- Select Your Program --</option>
+            {% for category, progs in programs.items() %}
+                <optgroup label="{{ category }}">
+                    {% for prog in progs %}
+                        <option value="{{ prog }}">{{ prog }}</option>
+                    {% endfor %}
+                </optgroup>
+            {% endfor %}
+        </select>
+
+
+        <label>
             Tags
         </label>
 

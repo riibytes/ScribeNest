@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
     <title>{{ note["title"] }} // ScribeNest</title>
@@ -81,7 +82,7 @@
     </div>
 
 
-    <!-- ATTACHED FILE PREVIEW / DOWNLOAD SECTION -->
+   <!-- ATTACHED FILE PREVIEW / DOWNLOAD SECTION (SUPABASE & OFFICE VIEWER INTEGRATED) -->
     {% if note["file_path"] %}
         <div class="file-attachment-box" style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
             
@@ -90,32 +91,66 @@
             </p>
 
             {% if note["file_type"] == "image" %}
-                <!-- Display Image Directly -->
                 <div style="margin-top: 15px;">
                     <img 
-                        src="{{ url_for('uploaded_file', filename=note['file_path']) }}" 
+                        src="{{ note['file_path'] }}" 
                         alt="{{ note['title'] }}" 
                         style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);"
                     >
                 </div>
             {% elif note["file_type"] == "pdf" %}
-                <!-- PDF Download / Open Link -->
-                <div style="margin-top: 15px; display: flex; gap: 15px; flex-wrap: wrap;">
-                    <a 
-                        href="{{ url_for('uploaded_file', filename=note['file_path']) }}" 
-                        target="_blank" 
-                        class="primary-button" 
-                        style="text-decoration: none; padding: 10px 20px; background: #3b82f6; color: white; border-radius: 8px; display: inline-block;"
-                    >
-                        📄 Open PDF in Browser
-                    </a>
-                    <a 
-                        href="{{ url_for('uploaded_file', filename=note['file_path']) }}" 
-                        download 
-                        style="text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border-radius: 8px; display: inline-block;"
-                    >
-                        ⬇️ Download PDF
-                    </a>
+                <div style="margin-top: 15px;">
+                    <iframe 
+                        src="{{ note['file_path'] }}" 
+                        width="100%" 
+                        height="600px" 
+                        style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 15px;"
+                    ></iframe>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <a 
+                            href="{{ note['file_path'] }}" 
+                            target="_blank" 
+                            class="primary-button" 
+                            style="text-decoration: none; padding: 10px 20px; background: #3b82f6; color: white; border-radius: 8px; display: inline-block;"
+                        >
+                            📄 Open in New Tab
+                        </a>
+                        <a 
+                            href="{{ note['file_path'] }}" 
+                            download 
+                            style="text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border-radius: 8px; display: inline-block;"
+                        >
+                            ⬇️ Download PDF
+                        </a>
+                    </div>
+                </div>
+            {% elif note["file_type"] == "document" %}
+                <div style="margin-top: 15px;">
+                    <!-- Embed Microsoft Office Online Viewer for PPTX/DOCX -->
+                    <iframe 
+                        src="https://view.officeapps.live.com/op/embed.aspx?src={{ note['file_path'] }}" 
+                        width="100%" 
+                        height="600px" 
+                        style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 15px;"
+                    ></iframe>
+
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <a 
+                            href="{{ note['file_path'] }}" 
+                            target="_blank" 
+                            class="primary-button"
+                            style="text-decoration: none; padding: 10px 20px; background: #3b82f6; color: white; border-radius: 8px; display: inline-block;"
+                        >
+                            📄 Open in New Tab
+                        </a>
+                        <a 
+                            href="{{ note['file_path'] }}" 
+                            download 
+                            style="text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border-radius: 8px; display: inline-block;"
+                        >
+                            ⬇️ Download Document
+                        </a>
+                    </div>
                 </div>
             {% endif %}
 
