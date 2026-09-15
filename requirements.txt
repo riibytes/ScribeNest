@@ -4,3 +4,4 @@ python-dotenv
 openai
 supabase
 gunicorn
+authlib
