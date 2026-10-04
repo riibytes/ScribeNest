@@ -1,11 +1,12 @@
 import os
-import sqlite3
 import uuid
 import requests
+import io
+import psycopg2
+import psycopg2.extras
 from authlib.integrations.flask_client import OAuth
 from functools import wraps
 from pypdf import PdfReader
-import io
 
 def extract_text_from_pdf(file_storage_or_bytes):
     try:
@@ -79,30 +80,9 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'}
 )
 
-# Serverless path configuration for Vercel read-only system vs local
-if os.environ.get("VERCEL"):
-    BASE_DIR = "/tmp"
-    DATABASE = os.path.join(BASE_DIR, "database.db")
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DATABASE = os.path.join(BASE_DIR, "database.db")
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-
-
 # =========================================================
 # FILE UPLOAD CONFIGURATION
 # =========================================================
-
-PDF_FOLDER = os.path.join(
-    UPLOAD_FOLDER,
-    "pdfs"
-)
-
-IMAGE_FOLDER = os.path.join(
-    UPLOAD_FOLDER,
-    "images"
-)
 
 ALLOWED_PDF_EXTENSIONS = {
     "pdf"
@@ -256,81 +236,28 @@ VIT_CURRICULUM_DATA = {
 
 
 # =========================================================
-# UNIVERSITY PROGRAMMES (shown in every "Programme" dropdown)
-# =========================================================
-
-PROGRAMMES = {
-    "B.Tech Programmes (4 Years)": [
-        "B.Tech Aerospace Engineering",
-        "B.Tech Bioengineering",
-        "B.Tech Computer Science & Engineering",
-        "B.Tech Computer Science & Engineering (Artificial Intelligence & Machine Learning)",
-        "B.Tech Computer Science & Engineering (Cyber Security & Digital Forensics)",
-        "B.Tech Computer Science & Engineering (Cloud Computing & Automation)",
-        "B.Tech Computer Science & Engineering (E-Commerce Technology)",
-        "B.Tech Computer Science & Engineering (Education Technology)",
-        "B.Tech Computer Science & Engineering (Gaming Technology)",
-        "B.Tech Computer Science & Engineering (Health Informatics)",
-        "B.Tech Electronics & Communication Engineering",
-        "B.Tech Electronics & Communication Engineering (Artificial Intelligence & Cybernetics)",
-        "B.Tech Mechanical Engineering",
-        "B.Tech Mechanical Engineering (Artificial Intelligence & Robotics)",
-    ],
-    "Architecture Programmes (5 Years)": [
-        "B.Arch",
-    ],
-    "Other UG Programmes (3 Years)": [
-        "BBA (Bachelor of Business Administration)",
-    ],
-    "Integrated PG Programmes (5 Years)": [
-        "M.Tech Artificial Intelligence",
-        "M.Tech Computer Science & Engineering (Cyber Security)",
-        "M.Tech Computer Science & Engineering (Computational and Data Science)",
-        "Integrated M.Tech. AI and Bioinformatics",
-    ],
-    "PG Programmes (2 Years)": [
-        "M.Tech Computer Science & Engineering (Cyber Security & Digital Forensics)",
-        "M.Tech Artificial Intelligence & Data Science",
-        "M.Tech VLSI Design",
-        "MBA (Master of Business Administration)",
-        "MCA (Master of Computer Applications)",
-    ],
-    "Ph.D Programmes": [
-        "Ph.D Engineering",
-        "Ph.D Sciences",
-        "Ph.D Business Studies",
-        "Ph.D Humanities",
-    ],
-}
-
-# Programmes whose subjects are known. Others get a "type the subject" box.
-# To add another branch later: PROGRAMME_CURRICULA["<programme name>"] = { category: [(code, name), ...] }
-PROGRAMME_CURRICULA = {
-    "B.Tech Computer Science & Engineering (Cloud Computing & Automation)": VIT_CURRICULUM_DATA,
-}
-
-ALL_PROGRAMMES = {name for names in PROGRAMMES.values() for name in names}
-
-
-# =========================================================
-# DATABASE
+# DATABASE CONNECTION & SETUP (SUPABASE POSTGRESQL)
 # =========================================================
 
 def get_db():
-    connection = sqlite3.connect(
-        DATABASE
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is not configured in environment variables.")
+    connection = psycopg2.connect(
+        database_url,
+        cursor_factory=psycopg2.extras.RealDictCursor
     )
-    connection.row_factory = sqlite3.Row
     return connection
 
 
 def init_db():
     try:
-        db = get_db()
+        conn = get_db()
+        cur = conn.cursor()
 
-        db.execute("""
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
@@ -338,9 +265,9 @@ def init_db():
             )
         """)
 
-        db.execute("""
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 title TEXT NOT NULL,
                 subject TEXT NOT NULL,
@@ -360,11 +287,9 @@ def init_db():
             )
         """)
 
-        db.commit()
-        db.close()
-
-        os.makedirs(PDF_FOLDER, exist_ok=True)
-        os.makedirs(IMAGE_FOLDER, exist_ok=True)
+        conn.commit()
+        cur.close()
+        conn.close()
     except Exception as e:
         print(f"Database init handled: {e}")
 
@@ -382,24 +307,13 @@ def login_required(function):
                 "error"
             )
             return redirect(
-                url_for(
-                    "login",
-                    next=request.path if request.method == "GET" else None
-                )
+                url_for("login")
             )
         return function(
             *args,
             **kwargs
         )
     return wrapper
-
-
-def get_safe_next():
-    """Return the saved post-login page, only if it is a local path."""
-    target = session.pop("next_url", "") or ""
-    if target.startswith("/") and not target.startswith("//") and "\\" not in target:
-        return target
-    return None
 
 
 # =========================================================
@@ -422,18 +336,21 @@ def public_subjects():
     return render_template("subjects.html", curriculum=VIT_CURRICULUM_DATA)
 
 
-@app.route("/subjects/<code>")
+@app.route("/subjects/`")
 def subject_detail(code):
     if "user_id" not in session:
         flash("Please login first to view notes and materials for this subject.", "error")
-        return redirect(url_for("login", next=request.path))
+        return redirect(url_for("login"))
     
-    db = get_db()
-    notes = db.execute(
-        "SELECT notes.*, users.name AS author FROM notes JOIN users ON notes.user_id = users.id WHERE notes.subject LIKE ? OR notes.content LIKE ? ORDER BY notes.updated_at DESC",
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT notes.*, users.name AS author FROM notes JOIN users ON notes.user_id = users.id WHERE notes.subject ILIKE %s OR notes.content ILIKE %s ORDER BY notes.updated_at DESC",
         (f"%{code}%", f"%{code}%")
-    ).fetchall()
-    db.close()
+    )
+    notes = cur.fetchall()
+    cur.close()
+    conn.close()
     return render_template("subject_notes.html", code=code, notes=notes)
 
 
@@ -465,34 +382,35 @@ def google_authorized():
         flash("Only authorized Gmail or VIT Bhopal accounts are allowed.", "error")
         return redirect(url_for("login"))
 
-    db = get_db()
-    user = db.execute(
-        "SELECT * FROM users WHERE email = ?",
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM users WHERE email = %s",
         (email,)
-    ).fetchone()
+    )
+    user = cur.fetchone()
 
     if not user:
         dummy_password = generate_password_hash(str(uuid.uuid4()))
-        db.execute(
+        cur.execute(
             """
             INSERT INTO users (name, email, password)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
+            RETURNING id, name, email
             """,
             (name, email, dummy_password)
         )
-        db.commit()
-        user = db.execute(
-            "SELECT * FROM users WHERE email = ?",
-            (email,)
-        ).fetchone()
+        user = cur.fetchone()
+        conn.commit()
 
-    db.close()
+    cur.close()
+    conn.close()
 
     session["user_id"] = user["id"]
     session["user_name"] = user["name"]
 
     flash("Welcome back to ScribeNest!", "success")
-    return redirect(get_safe_next() or url_for("dashboard"))
+    return redirect(url_for("dashboard"))
 
 
 # =========================================================
@@ -541,18 +459,21 @@ def register():
                 url_for("register")
             )
 
-        db = get_db()
-        existing_user = db.execute(
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
             """
             SELECT id
             FROM users
-            WHERE email = ?
+            WHERE email = %s
             """,
             (email,)
-        ).fetchone()
+        )
+        existing_user = cur.fetchone()
 
         if existing_user:
-            db.close()
+            cur.close()
+            conn.close()
             flash(
                 "An account with this email already exists.",
                 "error"
@@ -565,7 +486,7 @@ def register():
             generate_password_hash(password)
         )
 
-        db.execute(
+        cur.execute(
             """
             INSERT INTO users
             (
@@ -573,7 +494,7 @@ def register():
                 email,
                 password
             )
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
             """,
             (
                 name,
@@ -581,8 +502,9 @@ def register():
                 hashed_password
             )
         )
-        db.commit()
-        db.close()
+        conn.commit()
+        cur.close()
+        conn.close()
 
         flash(
             "Account created successfully. Please login.",
@@ -606,12 +528,6 @@ def register():
     methods=["GET", "POST"]
 )
 def login():
-    if request.method == "GET":
-        if request.args.get("next"):
-            session["next_url"] = request.args["next"]
-        else:
-            session.pop("next_url", None)
-
     if request.method == "POST":
         email = (
             request.form["email"]
@@ -620,16 +536,19 @@ def login():
         )
         password = request.form["password"]
 
-        db = get_db()
-        user = db.execute(
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
             """
             SELECT *
             FROM users
-            WHERE email = ?
+            WHERE email = %s
             """,
             (email,)
-        ).fetchone()
-        db.close()
+        )
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
 
         if user and check_password_hash(
             user["password"],
@@ -642,7 +561,7 @@ def login():
                 "success"
             )
             return redirect(
-                get_safe_next() or url_for("dashboard")
+                url_for("dashboard")
             )
 
         flash(
@@ -678,46 +597,51 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    db = get_db()
-    notes = db.execute(
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT *
         FROM notes
-        WHERE user_id = ?
+        WHERE user_id = %s
         ORDER BY updated_at DESC
         """,
         (
             session["user_id"],
         )
-    ).fetchall()
+    )
+    notes = cur.fetchall()
 
     total_notes = len(notes)
 
-    favorite_count = db.execute(
+    cur.execute(
         """
         SELECT COUNT(*)
         FROM notes
-        WHERE user_id = ?
+        WHERE user_id = %s
         AND is_favorite = 1
         """,
         (
             session["user_id"],
         )
-    ).fetchone()[0]
+    )
+    favorite_count = cur.fetchone()['count'] if 'count' in cur.fetchone() else 0
 
-    public_count = db.execute(
+    cur.execute(
         """
         SELECT COUNT(*)
         FROM notes
-        WHERE user_id = ?
+        WHERE user_id = %s
         AND is_public = 1
         """,
         (
             session["user_id"],
         )
-    ).fetchone()[0]
+    )
+    public_count = cur.fetchone()['count'] if 'count' in cur.fetchone() else 0
 
-    db.close()
+    cur.close()
+    conn.close()
 
     return render_template(
         "dashboard.html",
@@ -777,8 +701,9 @@ def create_note():
                 url_for("create_note")
             )
 
-        db = get_db()
-        db.execute(
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
             """
             INSERT INTO notes
             (
@@ -790,7 +715,7 @@ def create_note():
                 tags,
                 is_public
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 session["user_id"],
@@ -802,8 +727,9 @@ def create_note():
                 is_public
             )
         )
-        db.commit()
-        db.close()
+        conn.commit()
+        cur.close()
+        conn.close()
 
         flash(
             "Note created successfully!",
@@ -815,7 +741,7 @@ def create_note():
 
     return render_template(
         "create_note.html",
-        programs=PROGRAMMES
+        programs=VIT_CURRICULUM_DATA
     )
 
 
@@ -831,40 +757,15 @@ def create_note():
 def upload_note():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
-        tags = ", ".join(
-            t.strip() for t in request.form.get("tags", "").split(",") if t.strip()
-        )
-        program = request.form.get("program", "").strip()
+        subject = request.form.get("subject", "").strip()
+        tags = request.form.get("tags", "").strip()
+        content = request.form.get("content", "").strip()
         is_public = 1 if request.form.get("is_public") else 0
         uploaded_file = request.files.get("file")
 
-        if not title:
-            flash("Please enter a topic name.", "error")
+        if not title or not subject:
+            flash("Title and subject are required.", "error")
             return redirect(url_for("upload_note"))
-
-        if program not in ALL_PROGRAMMES:
-            flash("Please choose a programme from the list.", "error")
-            return redirect(url_for("upload_note"))
-
-        curriculum = PROGRAMME_CURRICULA.get(program)
-        if curriculum:
-            # Known curriculum: subject must be one of this programme's subjects
-            subjects_in_program = {
-                code: name
-                for items in curriculum.values()
-                for code, name in items
-            }
-            subject_code = request.form.get("subject", "").strip()
-            if subject_code not in subjects_in_program:
-                flash("Please choose a subject from the list.", "error")
-                return redirect(url_for("upload_note"))
-            subject = f"{subject_code} - {subjects_in_program[subject_code]}"
-        else:
-            # No curriculum stored for this programme yet: user types the subject
-            subject = request.form.get("subject_text", "").strip()[:120]
-            if not subject:
-                flash("Please enter the subject name.", "error")
-                return redirect(url_for("upload_note"))
 
         if not uploaded_file or not uploaded_file.filename:
             flash("Please select a file.", "error")
@@ -914,8 +815,9 @@ def upload_note():
             flash(f"Cloud upload failed: {str(e)}", "error")
             return redirect(url_for("upload_note"))
 
-        db = get_db()
-        db.execute(
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
             """
             INSERT INTO notes
             (
@@ -930,14 +832,14 @@ def upload_note():
                 file_path,
                 file_type
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 session["user_id"],
                 title,
                 subject,
-                program,
-                "",
+                subject.split(" - ")[0],
+                content,
                 tags,
                 is_public,
                 safe_filename,
@@ -945,16 +847,16 @@ def upload_note():
                 file_type
             )
         )
-        db.commit()
-        db.close()
+        conn.commit()
+        cur.close()
+        conn.close()
 
-        flash("Your note has been uploaded successfully!", "success")
+        flash("Your note has been uploaded successfully to Supabase cloud storage!", "success")
         return redirect(url_for("dashboard"))
 
     return render_template(
         "upload_note.html",
-        programs=PROGRAMMES,
-        curricula=PROGRAMME_CURRICULA
+        programs=VIT_CURRICULUM_DATA
     )
 
 
@@ -963,12 +865,13 @@ def upload_note():
 # =========================================================
 
 @app.route(
-    "/notes/<int:note_id>"
+    "/notes/"
 )
 @login_required
 def view_note(note_id):
-    db = get_db()
-    note = db.execute(
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT
             notes.*,
@@ -976,13 +879,15 @@ def view_note(note_id):
         FROM notes
         JOIN users
         ON notes.user_id = users.id
-        WHERE notes.id = ?
+        WHERE notes.id = %s
         """,
         (
             note_id,
         )
-    ).fetchone()
-    db.close()
+    )
+    note = cur.fetchone()
+    cur.close()
+    conn.close()
 
     if not note:
         flash(
@@ -1016,27 +921,30 @@ def view_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes/<int:note_id>/edit",
+    "/notes//edit",
     methods=["GET", "POST"]
 )
 @login_required
 def edit_note(note_id):
-    db = get_db()
-    note = db.execute(
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT *
         FROM notes
-        WHERE id = ?
-        AND user_id = ?
+        WHERE id = %s
+        AND user_id = %s
         """,
         (
             note_id,
             session["user_id"]
         )
-    ).fetchone()
+    )
+    note = cur.fetchone()
 
     if not note:
-        db.close()
+        cur.close()
+        conn.close()
         flash(
             "Note not found.",
             "error"
@@ -1075,19 +983,19 @@ def edit_note(note_id):
             else 0
         )
 
-        db.execute(
+        cur.execute(
             """
             UPDATE notes
             SET
-                title = ?,
-                subject = ?,
-                program = ?,
-                content = ?,
-                tags = ?,
-                is_public = ?,
+                title = %s,
+                subject = %s,
+                program = %s,
+                content = %s,
+                tags = %s,
+                is_public = %s,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            AND user_id = ?
+            WHERE id = %s
+            AND user_id = %s
             """,
             (
                 title,
@@ -1100,8 +1008,9 @@ def edit_note(note_id):
                 session["user_id"]
             )
         )
-        db.commit()
-        db.close()
+        conn.commit()
+        cur.close()
+        conn.close()
 
         flash(
             "Note updated successfully!",
@@ -1114,12 +1023,13 @@ def edit_note(note_id):
             )
         )
 
-    db.close()
+    cur.close()
+    conn.close()
 
     return render_template(
         "edit_note.html",
         note=note,
-        programs=PROGRAMMES
+        programs=VIT_CURRICULUM_DATA
     )
 
 
@@ -1128,25 +1038,27 @@ def edit_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes/<int:note_id>/delete",
+    "/notes//delete",
     methods=["POST"]
 )
 @login_required
 def delete_note(note_id):
-    db = get_db()
-    db.execute(
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
         """
         DELETE FROM notes
-        WHERE id = ?
-        AND user_id = ?
+        WHERE id = %s
+        AND user_id = %s
         """,
         (
             note_id,
             session["user_id"]
         )
     )
-    db.commit()
-    db.close()
+    conn.commit()
+    cur.close()
+    conn.close()
 
     flash(
         "Note deleted.",
@@ -1162,24 +1074,26 @@ def delete_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes/<int:note_id>/favorite",
+    "/notes//favorite",
     methods=["POST"]
 )
 @login_required
 def favorite_note(note_id):
-    db = get_db()
-    note = db.execute(
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT is_favorite
         FROM notes
-        WHERE id = ?
-        AND user_id = ?
+        WHERE id = %s
+        AND user_id = %s
         """,
         (
             note_id,
             session["user_id"]
         )
-    ).fetchone()
+    )
+    note = cur.fetchone()
 
     if note:
         new_value = (
@@ -1187,12 +1101,12 @@ def favorite_note(note_id):
             if note["is_favorite"]
             else 1
         )
-        db.execute(
+        cur.execute(
             """
             UPDATE notes
-            SET is_favorite = ?
-            WHERE id = ?
-            AND user_id = ?
+            SET is_favorite = %s
+            WHERE id = %s
+            AND user_id = %s
             """,
             (
                 new_value,
@@ -1200,9 +1114,10 @@ def favorite_note(note_id):
                 session["user_id"]
             )
         )
-        db.commit()
+        conn.commit()
 
-    db.close()
+    cur.close()
+    conn.close()
 
     return redirect(
         request.referrer
@@ -1226,8 +1141,9 @@ def search():
         .strip()
     )
 
-    db = get_db()
-    notes = db.execute(
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT
             notes.*,
@@ -1237,16 +1153,16 @@ def search():
         ON notes.user_id = users.id
         WHERE
             (
-                notes.user_id = ?
+                notes.user_id = %s
                 OR notes.is_public = 1
             )
             AND
             (
-                notes.title LIKE ?
-                OR notes.subject LIKE ?
-                OR notes.program LIKE ?
-                OR notes.content LIKE ?
-                OR notes.tags LIKE ?
+                notes.title ILIKE %s
+                OR notes.subject ILIKE %s
+                OR notes.program ILIKE %s
+                OR notes.content ILIKE %s
+                OR notes.tags ILIKE %s
             )
         ORDER BY notes.updated_at DESC
         """,
@@ -1258,14 +1174,16 @@ def search():
             f"%{query}%",
             f"%{query}%"
         )
-    ).fetchall()
-    db.close()
+    )
+    notes = cur.fetchall()
+    cur.close()
+    conn.close()
 
     return render_template(
         "public_notes.html",
         notes=notes,
         query=query,
-        programs=PROGRAMMES
+        programs=VIT_CURRICULUM_DATA
     )
 
 
@@ -1279,7 +1197,8 @@ def vault():
     selected_program = request.args.get("program", "").strip()
     selected_subject = request.args.get("subject", "").strip()
 
-    db = get_db()
+    conn = get_db()
+    cur = conn.cursor()
     
     query = """
         SELECT
@@ -1293,23 +1212,25 @@ def vault():
     params = []
 
     if selected_program:
-        query += " AND notes.program = ?"
+        query += " AND notes.program = %s"
         params.append(selected_program)
 
     if selected_subject:
-        query += " AND notes.subject = ?"
+        query += " AND notes.subject = %s"
         params.append(selected_subject)
 
     query += " ORDER BY notes.created_at DESC"
 
-    notes = db.execute(query, params).fetchall()
-    db.close()
+    cur.execute(query, params)
+    notes = cur.fetchall()
+    cur.close()
+    conn.close()
 
     return render_template(
         "public_notes.html",
         notes=notes,
         query="",
-        programs=PROGRAMMES,
+        programs=VIT_CURRICULUM_DATA,
         selected_program=selected_program,
         selected_subject=selected_subject
     )
@@ -1368,9 +1289,12 @@ def ai_tools():
         note_id = request.form.get("note_id")
 
         if note_id:
-            db = get_db()
-            note = db.execute("SELECT * FROM notes WHERE id = ? AND (user_id = ? OR is_public = 1)", (note_id, session["user_id"])).fetchone()
-            db.close()
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM notes WHERE id = %s AND (user_id = %s OR is_public = 1)", (note_id, session["user_id"]))
+            note = cur.fetchone()
+            cur.close()
+            conn.close()
             if note:
                 if note["file_type"] == "pdf" and note["file_path"]:
                     try:
@@ -1458,9 +1382,12 @@ Student question:
             prompt
         )
 
-    db = get_db()
-    user_notes = db.execute("SELECT id, title, subject FROM notes WHERE user_id = ? ORDER BY updated_at DESC", (session["user_id"],)).fetchall()
-    db.close()
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, title, subject FROM notes WHERE user_id = %s ORDER BY updated_at DESC", (session["user_id"],))
+    user_notes = cur.fetchall()
+    cur.close()
+    conn.close()
 
     return render_template(
         "ai.html",

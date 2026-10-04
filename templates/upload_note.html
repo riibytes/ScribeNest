@@ -74,7 +74,7 @@
         <label>File</label>
         <input type="file" name="file" class="field-file" required
                accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.ppt,.pptx">
-        <p class="field-hint">PDF, image, Word or PowerPoint. Maximum 20 MB.</p>
+        <p class="field-hint">PDF, image, Word or PowerPoint. Maximum {{ max_mb }} MB.</p>
 
         <label class="checkbox">
             <input type="checkbox" name="is_public">
