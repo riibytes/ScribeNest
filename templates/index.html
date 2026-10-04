@@ -9,56 +9,65 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: auto; }
   body { background: #000; color: #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
   a { text-decoration: none; }
-
-  .mono { font-family: 'JetBrains Mono', monospace; font-size: .75rem; letter-spacing: .15em; text-transform: uppercase; color: #64748b; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: .75rem; letter-spacing: .15em; text-transform: uppercase; color: #94a3b8; }
   .serif { font-family: 'Cinzel', serif; letter-spacing: -.01em; color: #fff; }
 
-  /* ---------- Hero (static, no scroll animation) ---------- */
-  .hero { position: relative; min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; padding: 40px 60px; overflow: hidden; }
-  .hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-  .hero-shade {
-    position: absolute; inset: 0; z-index: 1;
-    background:
-      linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.55) 42%, rgba(0,0,0,.1) 100%),
-      linear-gradient(to bottom, rgba(0,0,0,.6), transparent 22%, transparent 78%, rgba(0,0,0,.65));
+  /* ---------- Scroll-driven frame sequence ---------- */
+  .scroll-stage { height: 800vh; position: relative; }
+  canvas#render-canvas {
+    position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1;
+    filter: brightness(1.14) saturate(1.05);          /* brighter picture */
   }
-  .hero > header, .hero > .hero-copy, .hero > footer { position: relative; z-index: 2; }
+  /* light shade only where text sits, so the image stays bright */
+  .shade {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.14) 36%, transparent 58%),
+      linear-gradient(to bottom, rgba(0,0,0,.3), transparent 16%);
+  }
+  .viewport-overlay { position: fixed; inset: 0; z-index: 10; padding: 40px 60px; pointer-events: none; }
 
-  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; pointer-events: auto; }
   .brand h2 { font-size: 1.1rem; letter-spacing: .2em; font-weight: 700; color: #fff; }
   .brand p { margin-top: 5px; }
-
   nav { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-  nav a { color: #cbd5e1; font-size: .75rem; transition: color .2s, border-color .2s, background .2s; }
+  nav a { color: #e2e8f0; font-size: .75rem; transition: color .2s, border-color .2s, background .2s; }
   nav a:hover { color: #38bdf8; }
   .nav-login { color: #fff !important; }
-  .nav-register { border: 1px solid rgba(56,189,248,.5); padding: 8px 16px; border-radius: 2px; background: rgba(15,23,42,.6); color: #38bdf8 !important; }
-  .nav-register:hover { background: rgba(56,189,248,.14); border-color: #38bdf8; }
-  .btn-outline { border: 1px solid rgba(255,255,255,.3); padding: 9px 18px; border-radius: 2px; background: rgba(15,23,42,.6); color: #fff !important; }
+  .nav-register { border: 1px solid rgba(56,189,248,.55); padding: 8px 16px; border-radius: 2px; background: rgba(15,23,42,.55); color: #38bdf8 !important; }
+  .nav-register:hover { background: rgba(56,189,248,.16); border-color: #38bdf8; }
+  .btn-outline { border: 1px solid rgba(255,255,255,.35); padding: 9px 18px; border-radius: 2px; background: rgba(15,23,42,.55); color: #fff !important; }
   .btn-outline:hover { border-color: #38bdf8; color: #38bdf8 !important; }
 
-  .hero-copy { max-width: 560px; margin-block: auto; }
-  .chapter-tag { color: #38bdf8; display: block; margin-bottom: 14px; font-size: .72rem; }
-  .hero-copy h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin-bottom: 18px; font-weight: 600; }
-  .hero-copy p { font-size: 1rem; color: #cbd5e1; line-height: 1.65; }
-
-  .hero > footer { display: flex; justify-content: space-between; align-items: flex-end; }
-  .hint { color: #38bdf8; }
-  .hint:hover { text-decoration: underline; }
-  .dim { color: #64748b; margin-top: 4px; }
-  .status-dot { display: inline-block; width: 6px; height: 6px; background: #38bdf8; border-radius: 50%; margin-left: 6px; box-shadow: 0 0 8px #38bdf8; }
+  /* ---------- Narrative stages ---------- */
+  .narrative-stage {
+    position: absolute; top: 50%; width: 420px; pointer-events: none;
+    opacity: 0; visibility: hidden; transform: translateY(-50%) translateX(0);
+    transition: opacity .6s ease, transform .6s cubic-bezier(.16,1,.3,1), visibility .6s;
+    text-shadow: 0 2px 18px rgba(0,0,0,.7);
+  }
+  .narrative-stage.active { opacity: 1; visibility: visible; }
+  .initial-hero { left: 60px; top: 40%; width: 560px; max-width: 560px; }
+  .dock-left { left: 60px; transform: translateY(-50%) translateX(-28px); }
+  .dock-right { right: 60px; transform: translateY(-50%) translateX(28px); }
+  .dock-left.active, .dock-right.active { transform: translateY(-50%) translateX(0); }
+  .chapter-tag { color: #38bdf8; display: block; margin-bottom: 10px; font-size: .72rem; }
+  .initial-hero h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin-bottom: 16px; font-weight: 600; }
+  .narrative-stage h2 { font-size: 2.2rem; line-height: 1.2; margin-bottom: 14px; font-weight: 600; }
+  .narrative-stage p { font-size: .98rem; line-height: 1.65; color: #e2e8f0; font-weight: 400; }
+  .narrative-stage .mono { color: #38bdf8; }
 
   /* ---------- Shared vault section ---------- */
-  .app-portal { position: relative; min-height: 100vh; background: #05070c; border-top: 1px solid rgba(255,255,255,.1); padding: 120px 60px; display: flex; flex-direction: column; align-items: center; }
+  .app-portal { position: relative; z-index: 20; min-height: 100vh; background: #05070c; border-top: 1px solid rgba(255,255,255,.1); padding: 120px 60px; display: flex; flex-direction: column; align-items: center; }
   .vault-label { color: #38bdf8; }
   .vault-title { font-size: 2.6rem; margin-top: 8px; text-align: center; }
   .vault-description { max-width: 650px; text-align: center; color: #64748b; line-height: 1.7; margin-top: 18px; }
+  .search-form { width: 100%; display: flex; justify-content: center; }
   .search-input { width: 100%; max-width: 650px; padding: 18px 24px; border-radius: 6px; border: 1px solid #1e293b; background: rgba(15,23,42,.6); color: #fff; font-size: 1rem; outline: none; margin-top: 32px; font-family: 'JetBrains Mono', monospace; }
   .search-input:focus { border-color: #38bdf8; box-shadow: 0 0 25px rgba(56,189,248,.2); }
-  .search-form { width: 100%; display: flex; justify-content: center; }
   .vault-actions { display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap; justify-content: center; }
   .vault-button { display: inline-block; padding: 12px 22px; border: 1px solid #1e293b; background: #0f172a; color: #38bdf8; font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .08em; transition: .2s; }
   .vault-button:hover { border-color: #38bdf8; background: rgba(56,189,248,.08); }
@@ -66,67 +75,84 @@
   .vault-button.primary:hover { background: #7dd3fc; }
 
   @media (max-width: 900px) {
-    .hero { padding: 25px; }
+    .viewport-overlay { padding: 25px; }
     header { align-items: center; }
     nav { gap: 12px; }
-    .hero-shade { background: linear-gradient(to bottom, rgba(0,0,0,.7), rgba(0,0,0,.65)); }
+    .initial-hero, .dock-left, .dock-right { left: 25px; right: 25px; width: auto; max-width: none; }
+    .narrative-stage h2 { font-size: 1.8rem; }
+    .shade { background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,.25)); }
     .app-portal { padding: 90px 25px; }
   }
   @media (max-width: 650px) {
-    .hero { padding: 20px; }
+    .viewport-overlay { padding: 20px; }
     header { flex-direction: column; align-items: flex-start; }
     nav { justify-content: flex-start; }
     nav a { font-size: .65rem; }
-    .hero-copy p { font-size: .9rem; }
     .vault-title { font-size: 2rem; }
   }
 </style>
 </head>
 <body>
 
-<section class="hero">
-  <img class="hero-bg" src="{{ url_for('static', filename='frames/ezgif-frame-001.jpg') }}" alt="">
-  <div class="hero-shade"></div>
+<canvas id="render-canvas"></canvas>
+<div class="shade"></div>
 
-  <header>
-    <div class="brand">
-      <h2 class="serif">SCRIBENEST</h2>
-      <p class="mono">VIT BHOPAL // ACADEMIC KNOWLEDGE HUB</p>
+<div class="scroll-stage" id="scrollStage">
+  <div class="viewport-overlay">
+
+    <header>
+      <div class="brand">
+        <h2 class="serif">SCRIBENEST</h2>
+        <p class="mono">VIT BHOPAL // ACADEMIC KNOWLEDGE HUB</p>
+      </div>
+      <nav class="mono">
+        <a href="{{ url_for('public_subjects') }}">SUBJECTS</a>
+        <a href="{{ url_for('login') }}" class="nav-login">LOGIN</a>
+        <a href="{{ url_for('register') }}" class="nav-register">REGISTER</a>
+        <a href="{{ url_for('vault') }}" class="btn-outline">EXPLORE VAULT</a>
+      </nav>
+    </header>
+
+    <div class="narrative-stage initial-hero active">
+      <p class="mono chapter-tag">SCRIBENEST // YOUR ACADEMIC SPACE</p>
+      <h1 class="serif">Your Notes.<br>Smarter on<br>the Cloud.</h1>
+      <p>A centralized academic workspace for creating, organizing, sharing and intelligently interacting with your study notes.</p>
     </div>
-    <nav class="mono">
-      <a href="{{ url_for('public_subjects') }}">SUBJECTS</a>
-      <a href="{{ url_for('login') }}" class="nav-login">LOGIN</a>
-      <a href="{{ url_for('register') }}" class="nav-register">REGISTER</a>
-      <a href="{{ url_for('vault') }}" class="btn-outline">EXPLORE VAULT</a>
-    </nav>
-  </header>
 
-  <div class="hero-copy">
-    <p class="mono chapter-tag">SCRIBENEST // YOUR ACADEMIC SPACE</p>
-    <h1 class="serif">Your Notes.<br>Smarter on<br>the Cloud.</h1>
-    <p>A centralized academic workspace for creating, organizing, sharing and intelligently interacting with your study notes.</p>
+    <div class="narrative-stage dock-right">
+      <span class="mono chapter-tag">// 01 : THE LECTURE HALL</span>
+      <h2 class="serif">Classroom<br>Chaos.</h2>
+      <p>Rapidly scribbled notes, blackboard formulas and professor slide decks captured during class.</p>
+    </div>
+
+    <div class="narrative-stage dock-left">
+      <span class="mono chapter-tag">// 02 : STUDENT WORKSPACE</span>
+      <h2 class="serif">Messy Desks &amp;<br>Sticky Notes.</h2>
+      <p>Late-night study sessions filled with notebooks, diagrams, screenshots and scattered resources.</p>
+    </div>
+
+    <div class="narrative-stage dock-right">
+      <span class="mono chapter-tag">// 03 : INTELLIGENT AUTOMATION</span>
+      <h2 class="serif">Transformed to<br>Digital Knowledge.</h2>
+      <p>ScribeNest brings your notes into a searchable digital workspace and prepares them for AI-powered learning tools.</p>
+    </div>
+
+    <div class="narrative-stage dock-left">
+      <span class="mono chapter-tag">// 04 : SCRIBENEST VAULT</span>
+      <h2 class="serif">Stored.<br>Organized.<br>Intelligent.</h2>
+      <p>Build your personal academic vault, discover shared notes and use AI to turn your study material into something easier to understand.</p>
+    </div>
+
   </div>
-
-  <footer>
-    <div class="mono">
-      <a class="hint" href="#repo">BROWSE SHARED NOTES ↓</a>
-      <p class="dim">STORAGE: SCRIBENEST CLOUD</p>
-    </div>
-    <div class="mono" style="text-align: right;">
-      <p>PIPELINE: ACTIVE <span class="status-dot"></span></p>
-    </div>
-  </footer>
-</section>
+</div>
 
 <section class="app-portal" id="repo">
   <p class="mono vault-label">SCRIBENEST // SHARED VAULT</p>
   <h2 class="serif vault-title">Explore Shared Notes</h2>
   <p class="vault-description">Discover notes shared by students, search academic topics and build a collaborative knowledge base.</p>
-
   <form class="search-form" action="{{ url_for('search') }}" method="GET">
     <input type="text" name="q" class="search-input" placeholder="Search by subject code (e.g. CSE2001), topic or keyword...">
   </form>
-
   <div class="vault-actions">
     <a href="{{ url_for('vault') }}" class="vault-button primary">EXPLORE VAULT →</a>
     <a href="{{ url_for('login') }}" class="vault-button">LOGIN</a>
@@ -134,5 +160,70 @@
   </div>
 </section>
 
+<script>
+(() => {
+  const canvas = document.getElementById('render-canvas');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  canvas.width = 1920; canvas.height = 1080;
+
+  const frameCount = 150;
+  const framePath = "{{ url_for('static', filename='frames/') }}";
+  const images = new Array(frameCount);
+  const loaded = new Array(frameCount).fill(false);
+  const stage = document.getElementById('scrollStage');
+  const stages = [...document.querySelectorAll('.narrative-stage')];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+
+  let maxScroll = 1, target = 0, current = 0, shown = -1, activeStage = -1, running = false;
+
+  /* Load frames in order so the early ones are ready first */
+  for (let i = 0; i < frameCount; i++) {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => { loaded[i] = true; if (i === 0 || i === shown) draw(i, true); };
+    img.src = framePath + 'ezgif-frame-' + String(i + 1).padStart(3, '0') + '.jpg';
+    images[i] = img;
+  }
+
+  /* Draw frame i (or the nearest earlier frame that has loaded) */
+  function draw(i, force) {
+    let k = i;
+    while (k > 0 && !loaded[k]) k--;
+    if (!loaded[k]) return;
+    if (k === shown && !force) return;
+    ctx.drawImage(images[k], 0, 0, canvas.width, canvas.height);
+    shown = k;
+  }
+
+  function setStage(fraction) {
+    const idx = fraction < .15 ? 0 : fraction < .38 ? 1 : fraction < .62 ? 2 : fraction < .85 ? 3 : 4;
+    if (idx === activeStage) return;
+    activeStage = idx;
+    stages.forEach((el, n) => el.classList.toggle('active', n === idx));
+  }
+
+  const measure = () => { maxScroll = Math.max(1, stage.offsetHeight - innerHeight); };
+  const readTarget = () => {
+    const f = clamp(scrollY / maxScroll);
+    target = f * (frameCount - 1);
+    setStage(f);
+  };
+
+  /* Ease toward the scroll position so playback glides instead of stepping */
+  function tick() {
+    const diff = target - current;
+    if (reduce || Math.abs(diff) < 0.05) { current = target; draw(Math.round(current)); running = false; return; }
+    current += diff * 0.14;
+    draw(Math.round(current));
+    requestAnimationFrame(tick);
+  }
+  function kick() { readTarget(); if (!running) { running = true; requestAnimationFrame(tick); } }
+
+  addEventListener('scroll', kick, { passive: true });
+  addEventListener('resize', () => { measure(); kick(); });
+  measure(); readTarget(); current = target;
+})();
+</script>
 </body>
 </html>
