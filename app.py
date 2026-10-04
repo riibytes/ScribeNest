@@ -267,6 +267,63 @@ VIT_CURRICULUM_DATA = {
 
 
 # =========================================================
+# PROGRAMMES  ->  CURRICULUM TYPES  ->  SUBJECTS
+# =========================================================
+# Level 1: PROGRAMMES (list of university programmes, shown in the Programme dropdown)
+# Level 2+3: PROGRAMME_CURRICULA maps a programme to its curriculum data.
+#   VIT_CURRICULUM_DATA above is already {curriculum type: {group: [(code, name)]}},
+#   so it is reused as-is (no duplicated subject data).
+# To add another branch later:
+#   PROGRAMME_CURRICULA["<programme name>"] = { type: { group: [(code, name), ...] } }
+
+PROGRAMMES = {
+    "B.Tech Programmes (4 Years)": [
+        "B.Tech Aerospace Engineering",
+        "B.Tech Bioengineering",
+        "B.Tech Computer Science & Engineering",
+        "B.Tech Computer Science & Engineering (Artificial Intelligence & Machine Learning)",
+        "B.Tech Computer Science & Engineering (Cyber Security & Digital Forensics)",
+        "B.Tech Computer Science & Engineering (Cloud Computing & Automation)",
+        "B.Tech Computer Science & Engineering (E-Commerce Technology)",
+        "B.Tech Computer Science & Engineering (Education Technology)",
+        "B.Tech Computer Science & Engineering (Gaming Technology)",
+        "B.Tech Computer Science & Engineering (Health Informatics)",
+        "B.Tech Electronics & Communication Engineering",
+        "B.Tech Electronics & Communication Engineering (Artificial Intelligence & Cybernetics)",
+        "B.Tech Mechanical Engineering",
+        "B.Tech Mechanical Engineering (Artificial Intelligence & Robotics)",
+    ],
+    "Architecture Programmes (5 Years)": ["B.Arch"],
+    "Other UG Programmes (3 Years)": ["BBA (Bachelor of Business Administration)"],
+    "Integrated PG Programmes (5 Years)": [
+        "M.Tech Artificial Intelligence",
+        "M.Tech Computer Science & Engineering (Cyber Security)",
+        "M.Tech Computer Science & Engineering (Computational and Data Science)",
+        "Integrated M.Tech. AI and Bioinformatics",
+    ],
+    "PG Programmes (2 Years)": [
+        "M.Tech Computer Science & Engineering (Cyber Security & Digital Forensics)",
+        "M.Tech Artificial Intelligence & Data Science",
+        "M.Tech VLSI Design",
+        "MBA (Master of Business Administration)",
+        "MCA (Master of Computer Applications)",
+    ],
+    "Ph.D Programmes": [
+        "Ph.D Engineering",
+        "Ph.D Sciences",
+        "Ph.D Business Studies",
+        "Ph.D Humanities",
+    ],
+}
+
+PROGRAMME_CURRICULA = {
+    "B.Tech Computer Science & Engineering (Cloud Computing & Automation)": VIT_CURRICULUM_DATA,
+}
+
+ALL_PROGRAMMES = {name for names in PROGRAMMES.values() for name in names}
+
+
+# =========================================================
 # DATABASE CONNECTION (SUPABASE POSTGRESQL)
 # =========================================================
 
@@ -303,6 +360,7 @@ def init_db():
                 title TEXT NOT NULL,
                 subject TEXT NOT NULL,
                 program TEXT DEFAULT '',
+                curriculum_type TEXT DEFAULT '',
                 content TEXT NOT NULL,
                 tags TEXT DEFAULT '',
                 is_public INTEGER DEFAULT 0,
@@ -317,6 +375,9 @@ def init_db():
                 ON DELETE CASCADE
             )
         """)
+
+        # Existing databases: add the new column if it is missing
+        cur.execute("ALTER TABLE notes ADD COLUMN IF NOT EXISTS curriculum_type TEXT DEFAULT ''")
 
         conn.commit()
         cur.close()
@@ -367,7 +428,7 @@ def public_subjects():
     return render_template("subjects.html", curriculum=VIT_CURRICULUM_DATA)
 
 
-@app.route("/subjects/`")
+@app.route("/subjects/<code>")
 def subject_detail(code):
     if "user_id" not in session:
         flash("Please login first to view notes and materials for this subject.", "error")
@@ -772,12 +833,10 @@ def create_note():
             url_for("dashboard")
         )
 
-    # Flatten categories into a list of strings for programs dropdown compatibility
-    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
 
     return render_template(
         "create_note.html",
-        programs=flattened_programs,
+        programs=PROGRAMMES,
         curricula=VIT_CURRICULUM_DATA
     )
 
@@ -794,16 +853,45 @@ def create_note():
 def upload_note():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
-        subject = request.form.get("subject", "").strip() or request.form.get("subject_text", "").strip()
         program = request.form.get("program", "").strip()
+        curriculum_type = request.form.get("curriculum_type", "").strip()
         tags = request.form.get("tags", "").strip()
         content = request.form.get("content", "").strip()
         is_public = 1 if request.form.get("is_public") else 0
         uploaded_file = request.files.get("file")
 
-        if not title or not subject:
-            flash("Title and subject are required.", "error")
+        if not title:
+            flash("Please enter a title for the note.", "error")
             return redirect(url_for("upload_note"))
+
+        if program not in ALL_PROGRAMMES:
+            flash("Please choose a programme from the list.", "error")
+            return redirect(url_for("upload_note"))
+
+        curriculum = PROGRAMME_CURRICULA.get(program)
+        if curriculum:
+            # Programme -> Curriculum Type -> Subject must all be consistent
+            if curriculum_type not in curriculum:
+                flash("Please choose a curriculum type for this programme.", "error")
+                return redirect(url_for("upload_note"))
+
+            subjects_in_type = {
+                code: name
+                for group in curriculum[curriculum_type].values()
+                for code, name in group
+            }
+            subject_code = request.form.get("subject", "").strip()
+            if subject_code not in subjects_in_type:
+                flash("Please choose a subject from the list.", "error")
+                return redirect(url_for("upload_note"))
+            subject = f"{subject_code} - {subjects_in_type[subject_code]}"
+        else:
+            # No curriculum stored for this programme yet: subject is typed in
+            curriculum_type = ""
+            subject = request.form.get("subject_text", "").strip()[:120]
+            if not subject:
+                flash("Please enter the subject name.", "error")
+                return redirect(url_for("upload_note"))
 
         if not uploaded_file or not uploaded_file.filename:
             flash("Please select a file.", "error")
@@ -863,6 +951,7 @@ def upload_note():
                 title,
                 subject,
                 program,
+                curriculum_type,
                 content,
                 tags,
                 is_public,
@@ -870,13 +959,14 @@ def upload_note():
                 file_path,
                 file_type
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 session["user_id"],
                 title,
                 subject,
                 program,
+                curriculum_type,
                 content,
                 tags,
                 is_public,
@@ -892,13 +982,11 @@ def upload_note():
         flash("Your note has been uploaded successfully to Supabase cloud storage!", "success")
         return redirect(url_for("dashboard"))
 
-    # Flatten categories into a list of strings for programs dropdown compatibility
-    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
 
     return render_template(
         "upload_note.html",
-        programs=flattened_programs,
-        curricula=VIT_CURRICULUM_DATA,
+        programs=PROGRAMMES,
+        curricula=PROGRAMME_CURRICULA,
         max_mb=20
     )
 
@@ -908,7 +996,7 @@ def upload_note():
 # =========================================================
 
 @app.route(
-    "/notes/"
+    "/notes/<int:note_id>"
 )
 @login_required
 def view_note(note_id):
@@ -964,7 +1052,7 @@ def view_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes//edit",
+    "/notes/<int:note_id>/edit",
     methods=["GET", "POST"]
 )
 @login_required
@@ -1069,12 +1157,11 @@ def edit_note(note_id):
     cur.close()
     conn.close()
 
-    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
 
     return render_template(
         "edit_note.html",
         note=note,
-        programs=flattened_programs
+        programs=PROGRAMMES
     )
 
 
@@ -1083,7 +1170,7 @@ def edit_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes//delete",
+    "/notes/<int:note_id>/delete",
     methods=["POST"]
 )
 @login_required
@@ -1119,7 +1206,7 @@ def delete_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes//favorite",
+    "/notes/<int:note_id>/favorite",
     methods=["POST"]
 )
 @login_required
@@ -1224,13 +1311,12 @@ def search():
     cur.close()
     conn.close()
 
-    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
 
     return render_template(
         "public_notes.html",
         notes=notes,
         query=query,
-        programs=flattened_programs
+        programs=PROGRAMMES
     )
 
 
@@ -1273,13 +1359,12 @@ def vault():
     cur.close()
     conn.close()
 
-    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
 
     return render_template(
         "public_notes.html",
         notes=notes,
         query="",
-        programs=flattened_programs,
+        programs=PROGRAMMES,
         selected_program=selected_program,
         selected_subject=selected_subject
     )

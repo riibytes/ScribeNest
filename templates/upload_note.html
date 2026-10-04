@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 
@@ -256,6 +255,26 @@
             </select>
 
 
+            <!-- CURRICULUM TYPE -->
+
+            <label for="curriculum_type">
+                Curriculum Type
+                <span class="required">*</span>
+            </label>
+
+            <select
+                name="curriculum_type"
+                id="curriculum_type"
+                class="field-select"
+                required
+                disabled
+            >
+                <option value="">
+                    Select a programme first
+                </option>
+            </select>
+
+
             <!-- SUBJECT -->
 
             <label for="subject">
@@ -268,33 +287,32 @@
                 id="subject"
                 class="field-select"
                 required
+                disabled
             >
-
                 <option value="">
-                    Select a programme first
+                    Select a curriculum type first
                 </option>
-
-                {% for prog, categories in curricula.items() %}
-
-                    {% for category, subjects in categories.items() %}
-
-                        {% for code, name in subjects %}
-
-                            <option
-                                value="{{ code }}"
-                                data-program="{{ prog }}"
-                                data-category="{{ category }}"
-                            >
-                                {{ code }} - {{ name }}
-                            </option>
-
-                        {% endfor %}
-
-                    {% endfor %}
-
-                {% endfor %}
-
             </select>
+
+
+            <!-- Curriculum data from Flask (Programme > Curriculum Type > Group > Subject).
+                 The JavaScript below reads this to fill the two dependent dropdowns. -->
+            <div id="curriculum-data" hidden>
+                {% for prog, types in curricula.items() %}
+                    {% for ctype, groups in types.items() %}
+                        {% for group, subjects in groups.items() %}
+                            {% for code, name in subjects %}
+                                <span
+                                    data-program="{{ prog }}"
+                                    data-type="{{ ctype }}"
+                                    data-group="{{ group }}"
+                                    data-code="{{ code }}"
+                                >{{ code }} - {{ name }}</span>
+                            {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+            </div>
 
 
             <!-- CUSTOM SUBJECT -->
@@ -414,223 +432,87 @@
 
     <script>
 
-        const programSelect =
-            document.getElementById("program");
+        const programSelect = document.getElementById("program");
+        const typeSelect    = document.getElementById("curriculum_type");
+        const subjectSelect = document.getElementById("subject");
+        const subjectText   = document.getElementById("subjectText");
 
-        const subjectSelect =
-            document.getElementById("subject");
-
-        const subjectText =
-            document.getElementById("subjectText");
-
-
-        /*
-         * Store all curriculum subjects
-         * provided by Flask.
-         */
-
-        const allSubjects = [
-            ...subjectSelect.querySelectorAll(
-                "option[data-program]"
-            )
-        ].map(option => ({
-
-            value: option.value,
-
-            text: option.textContent.trim(),
-
-            program: option.dataset.program,
-
-            category: option.dataset.category
-
+        /* Every subject Flask knows about, one row each */
+        const rows = [...document.querySelectorAll("#curriculum-data span")].map(el => ({
+            program: el.dataset.program,
+            type:    el.dataset.type,
+            group:   el.dataset.group,
+            code:    el.dataset.code,
+            text:    el.textContent.trim()
         }));
 
-
-        /*
-         * Update subject dropdown whenever
-         * the programme changes.
-         */
-
-        function updateSubject() {
-
-            const selectedProgram =
-                programSelect.value;
-
-
-            const matchingSubjects =
-                allSubjects.filter(
-                    subject =>
-                        subject.program === selectedProgram
-                );
-
-
-            /*
-             * If the selected programme has
-             * no predefined subjects, allow
-             * the user to type one manually.
-             */
-
-            const allowCustomSubject =
-                selectedProgram !== "" &&
-                matchingSubjects.length === 0;
-
-
-            /*
-             * Clear current subject options.
-             */
-
-            subjectSelect.innerHTML = "";
-
-
-            /*
-             * Add default option.
-             */
-
-            subjectSelect.add(
-                new Option(
-                    selectedProgram
-                        ? "Select a subject"
-                        : "Select a programme first",
-                    ""
-                )
-            );
-
-
-            /*
-             * Group subjects by category.
-             */
-
-            const groups = {};
-
-
-            matchingSubjects.forEach(subject => {
-
-                if (!groups[subject.category]) {
-
-                    groups[subject.category] =
-                        document.createElement("optgroup");
-
-                    groups[subject.category].label =
-                        subject.category;
-
-                    subjectSelect.appendChild(
-                        groups[subject.category]
-                    );
-                }
-
-
-                groups[subject.category].appendChild(
-
-                    new Option(
-                        subject.text,
-                        subject.value
-                    )
-
-                );
-
-            });
-
-
-            /*
-             * Switch between dropdown and
-             * custom subject input.
-             */
-
-            subjectSelect.hidden =
-                allowCustomSubject;
-
-            subjectSelect.disabled =
-                allowCustomSubject ||
-                !selectedProgram;
-
-            subjectSelect.required =
-                !allowCustomSubject;
-
-
-            subjectText.hidden =
-                !allowCustomSubject;
-
-            subjectText.disabled =
-                !allowCustomSubject;
-
-            subjectText.required =
-                allowCustomSubject;
-
+        function resetSelect(select, placeholder) {
+            select.innerHTML = "";
+            select.add(new Option(placeholder, ""));
+            select.value = "";
         }
 
+        /* Programme changed: rebuild Curriculum Type, then clear Subject */
+        function updateTypes() {
+            const program = programSelect.value;
+            const types = [...new Set(
+                rows.filter(r => r.program === program).map(r => r.type)
+            )];
 
-        /*
-         * When programme changes.
-         */
+            /* A programme with no stored curriculum: type the subject instead */
+            const typedSubject = program !== "" && types.length === 0;
 
-        programSelect.addEventListener(
-            "change",
-            updateSubject
-        );
+            resetSelect(
+                typeSelect,
+                !program ? "Select a programme first"
+                         : typedSubject ? "No curriculum available for this programme"
+                                        : "Select a curriculum type"
+            );
+            types.forEach(t => typeSelect.add(new Option(t, t)));
+            typeSelect.disabled = types.length === 0;
+            typeSelect.required = types.length > 0;
 
+            subjectSelect.hidden = typedSubject;
+            subjectText.hidden = !typedSubject;
+            subjectText.disabled = !typedSubject;
+            subjectText.required = typedSubject;
 
-        /*
-         * Initial state.
-         */
+            updateSubjects();
+        }
 
-        updateSubject();
+        /* Curriculum Type changed: rebuild Subject (grouped by its sub-category) */
+        function updateSubjects() {
+            const program = programSelect.value;
+            const type = typeSelect.value;
+            const typedSubject = subjectSelect.hidden;
 
+            resetSelect(
+                subjectSelect,
+                type ? "Select a subject" : "Select a curriculum type first"
+            );
 
-        /*
-         * Before submitting, if a custom subject
-         * was entered, copy it into the actual
-         * subject field expected by Flask.
-         */
-
-        document.querySelector("form")
-            .addEventListener("submit", function () {
-
-                if (!subjectSelect.hidden) {
-                    return;
+            const groups = {};
+            rows.filter(r => r.program === program && r.type === type).forEach(r => {
+                if (!groups[r.group]) {
+                    groups[r.group] = document.createElement("optgroup");
+                    groups[r.group].label = r.group;
+                    subjectSelect.appendChild(groups[r.group]);
                 }
-
-
-                const customSubject =
-                    subjectText.value.trim();
-
-
-                if (customSubject) {
-
-                    /*
-                     * Flask expects:
-                     * request.form.get("subject")
-                     */
-
-                    subjectSelect.disabled = false;
-
-                    subjectSelect.required = false;
-
-                    /*
-                     * Create a temporary option
-                     * containing the custom subject.
-                     */
-
-                    const customOption =
-                        new Option(
-                            customSubject,
-                            customSubject,
-                            true,
-                            true
-                        );
-
-                    subjectSelect.innerHTML = "";
-
-                    subjectSelect.appendChild(
-                        customOption
-                    );
-
-                }
-
+                groups[r.group].appendChild(new Option(r.text, r.code));
             });
+
+            subjectSelect.disabled = typedSubject || !type;
+            subjectSelect.required = !typedSubject;
+        }
+
+        programSelect.addEventListener("change", updateTypes);
+        typeSelect.addEventListener("change", updateSubjects);
+
+        updateTypes();
 
     </script>
 
 </body>
 
 </html>
-```
+
