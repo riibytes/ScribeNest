@@ -1,4 +1,4 @@
 from app import app
 
-# Expose app for Vercel serverless environment
-application = app
+if __name__ == "__main__":
+    app.run()
