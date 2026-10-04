@@ -1,268 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cinematic Curriculum // ScribeNest</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Curriculum // ScribeNest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  :root { --hue: 195; --accent: hsl(var(--hue) 90% 62%); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scrollbar-width: none; }
+  html::-webkit-scrollbar { display: none; }
+  body { background: #02040a; color: #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
 
-        body {
-            background-color: #000000;
-            color: #e2e8f0;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            overflow-x: hidden;
-        }
+  /* ---------- Ambient backdrop (moves with scroll) ---------- */
+  .backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .glow { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; filter: blur(90px); opacity: .5; will-change: transform; }
+  .glow.a { background: radial-gradient(circle, hsl(var(--hue) 90% 50% / .35), transparent 65%); left: -20vmax; top: -20vmax; }
+  .glow.b { background: radial-gradient(circle, hsl(calc(var(--hue) + 60) 80% 45% / .28), transparent 65%); right: -25vmax; bottom: -25vmax; }
+  .grid-lines {
+    position: absolute; inset: -50% 0; will-change: transform;
+    background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+  }
 
-        /* Top Navigation Header */
-        .cinematic-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            padding: 30px 60px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
-            pointer-events: auto;
-        }
+  /* ---------- Header / footer ---------- */
+  .cin-header, .cin-footer { position: fixed; left: 0; width: 100%; z-index: 100; display: flex; justify-content: space-between; padding: 28px 56px; pointer-events: none; }
+  .cin-header { top: 0; align-items: center; background: linear-gradient(to bottom, rgba(2,4,10,.9), transparent); }
+  .cin-header a { pointer-events: auto; color: var(--accent); font: 400 .8rem 'JetBrains Mono', monospace; letter-spacing: .08em; text-decoration: none; }
+  .cin-header a:hover, .cin-header a:focus-visible { text-decoration: underline; outline: none; }
+  .cin-header h2 { font: 600 1.05rem 'Cinzel', serif; letter-spacing: .18em; color: #fff; }
+  .cin-footer { bottom: 0; align-items: flex-end; background: linear-gradient(to top, rgba(2,4,10,.9), transparent); font: 400 .78rem 'JetBrains Mono', monospace; color: #64748b; letter-spacing: .06em; }
+  .cin-footer .now { color: var(--accent); text-align: right; }
+  .cin-footer .now b { font-weight: 500; color: #fff; display: block; margin-bottom: 2px; }
 
-        .cinematic-header a {
-            color: #38bdf8;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            letter-spacing: 0.15em;
-            text-decoration: none;
-        }
+  /* ---------- Scroll track & pinned stage ---------- */
+  .scroll-track { position: relative; z-index: 10; }
+  .stage {
+    position: sticky; top: 0; height: 100vh; width: 100%;
+    display: flex; justify-content: center; align-items: center; padding: 0 40px;
+    perspective: 1400px; perspective-origin: 50% 40%; overflow: hidden;
+  }
 
-        .cinematic-header h2 {
-            font-family: 'Cinzel', serif;
-            font-size: 1.1rem;
-            color: #fff;
-            letter-spacing: 0.2em;
-        }
+  /* ---------- Branch cards (position driven by JS every frame) ---------- */
+  .branch-card {
+    position: absolute; width: 100%; max-width: 820px; padding: 40px;
+    background: rgba(12, 20, 38, .68); border: 1px solid hsl(var(--hue) 90% 62% / .22);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-radius: 14px; box-shadow: 0 30px 70px -20px rgba(0,0,0,.8);
+    opacity: 0; visibility: hidden; pointer-events: none; will-change: transform, opacity, filter;
+    transform-style: preserve-3d;
+  }
+  .branch-card.active { pointer-events: auto; }
+  .branch-index { display: block; margin-bottom: 8px; font: 400 .78rem 'JetBrains Mono', monospace; color: var(--accent); letter-spacing: .06em; }
+  .branch-card h3 { font: 600 clamp(1.4rem, 3vw, 2rem) 'Cinzel', serif; color: #fff; line-height: 1.2; margin-bottom: 8px; }
+  .branch-count { font-size: .85rem; color: #94a3b8; margin-bottom: 22px; }
 
-        /* Long scroll track to trigger cinematic card swaps */
-        .curriculum-scroll-track {
-            height: 1200vh;
-            position: relative;
-        }
+  .subjects-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px;
+    max-height: 46vh; overflow-y: auto; padding: 4px 6px 4px 0;
+    scrollbar-width: thin; scrollbar-color: hsl(var(--hue) 60% 40%) transparent;
+  }
 
-        /* Pinned viewport stage */
-        .curriculum-stage {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 0 40px;
-            z-index: 10;
-            pointer-events: none;
-        }
+  /* Subject pills glide in one after another when their card arrives */
+  .subject-pill {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 14px 18px; border-radius: 8px; text-decoration: none; color: #cbd5e1;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+    opacity: 0; transform: translate3d(-28px, 14px, 0);
+    transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1),
+                background .25s, border-color .25s, box-shadow .25s, color .25s;
+  }
+  .branch-card.active .subject-pill {
+    opacity: 1; transform: none;
+    transition-delay: min(calc(var(--i) * 45ms + 180ms), 900ms), min(calc(var(--i) * 45ms + 180ms), 900ms), 0s, 0s, 0s, 0s;
+  }
+  .branch-card.active .subject-pill:hover, .subject-pill:focus-visible {
+    background: hsl(var(--hue) 90% 62% / .09); border-color: var(--accent); color: #fff;
+    transform: translate3d(6px, 0, 0); box-shadow: 0 0 22px hsl(var(--hue) 90% 62% / .18);
+    transition-delay: 0s; outline: none;
+  }
+  .subject-pill .name { font-size: .92rem; }
+  .subject-pill .code { font: 500 .76rem 'JetBrains Mono', monospace; color: var(--accent); white-space: nowrap; }
 
-        /* Individual Branch Cards */
-        .branch-card {
-            position: absolute;
-            width: 100%;
-            max-width: 800px;
-            background: rgba(15, 23, 42, 0.75);
-            border: 1px solid rgba(56, 189, 248, 0.25);
-            backdrop-filter: blur(16px);
-            border-radius: 12px;
-            padding: 40px;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(40px) scale(0.95);
-            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: auto;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-        }
+  /* ---------- Side rail: click to jump between branches ---------- */
+  .rail { position: fixed; right: 26px; top: 50%; transform: translateY(-50%); z-index: 100; display: flex; flex-direction: column; gap: 14px; }
+  .rail button {
+    width: 10px; height: 10px; border-radius: 50%; border: 1px solid #475569; background: transparent; cursor: pointer; padding: 0;
+    transition: transform .4s cubic-bezier(.16,1,.3,1), background .3s, border-color .3s;
+  }
+  .rail button:hover, .rail button:focus-visible { border-color: var(--accent); outline: none; }
+  .rail button.on { background: var(--accent); border-color: var(--accent); transform: scale(1.6); }
 
-        .branch-card.active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0) scale(1);
-        }
-
-        .branch-index {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            letter-spacing: 0.15em;
-            color: #38bdf8;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .branch-card h3 {
-            font-family: 'Cinzel', serif;
-            font-size: 1.8rem;
-            color: #ffffff;
-            margin-bottom: 24px;
-            line-height: 1.2;
-        }
-
-        /* Subject Grid with Hover Mechanics */
-        .subjects-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 12px;
-            max-height: 45vh;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-
-        .subject-pill {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 14px 18px;
-            border-radius: 6px;
-            color: #cbd5e1;
-            text-decoration: none;
-            transition: all 0.25s ease;
-        }
-
-        .subject-pill:hover {
-            background: rgba(56, 189, 248, 0.08);
-            border-color: #38bdf8;
-            color: #ffffff;
-            transform: translateX(4px);
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
-        }
-
-        .subject-pill .code {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: #38bdf8;
-            font-weight: 500;
-        }
-
-        .subject-pill .name {
-            font-size: 0.9rem;
-            font-weight: 400;
-        }
-
-        /* Progress HUD Footer */
-        .cinematic-footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100vw;
-            padding: 30px 60px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            z-index: 100;
-            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
-            pointer-events: none;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: #64748b;
-            letter-spacing: 0.1em;
-        }
-
-        .cinematic-footer .active-progress {
-            color: #38bdf8;
-        }
-
-        @media(max-width: 768px) {
-            .cinematic-header, .cinematic-footer {
-                padding: 20px;
-            }
-            .branch-card {
-                padding: 25px;
-            }
-            .branch-card h3 {
-                font-size: 1.3rem;
-            }
-        }
-    </style>
+  @media (max-width: 768px) {
+    .cin-header, .cin-footer { padding: 18px 20px; }
+    .cin-header h2 { font-size: .85rem; }
+    .stage { padding: 0 16px; }
+    .branch-card { padding: 24px 20px; }
+    .subjects-grid { grid-template-columns: 1fr; max-height: 50vh; }
+    .rail { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .subject-pill { transition-duration: .01s; transition-delay: 0s !important; }
+  }
+</style>
 </head>
 <body>
 
-    <header class="cinematic-header">
-        <a href="{{ url_for('home') }}">← BACK TO HOME</a>
-        <h2 class="serif">SCRIBENEST CURRICULUM</h2>
-    </header>
+<div class="backdrop" aria-hidden="true">
+  <div class="grid-lines" id="gridLines"></div>
+  <div class="glow a" id="glowA"></div>
+  <div class="glow b" id="glowB"></div>
+</div>
 
-    <!-- Scroll Track (controls scroll length) -->
-    <div class="curriculum-scroll-track" id="scrollTrack">
-        <div class="curriculum-stage">
-            
-            {% set outer_loop = loop %}
-            {% for category, subjects in curriculum.items() %}
-                <div class="branch-card {% if loop.first %}active{% endif %}" data-index="{{ loop.index0 }}">
-                    <span class="branch-index">// BRANCH SECTION 0{{ loop.index }} OF 12</span>
-                    <h3>{{ category }}</h3>
-                    
-                    <div class="subjects-grid">
-                        {% for code, name in subjects %}
-                            <a href="{{ url_for('subject_detail', code=code) }}" class="subject-pill">
-                                <span class="name">{{ name }}</span>
-                                <span class="code">{{ code }}</span>
-                            </a>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endfor %}
+<header class="cin-header">
+  <a href="{{ url_for('home') }}">&larr; Back to home</a>
+  <h2>SCRIBENEST CURRICULUM</h2>
+</header>
 
+<nav class="rail" id="rail" aria-label="Curriculum branches">
+  {% for category in curriculum.keys() %}
+    <button type="button" data-i="{{ loop.index0 }}" title="{{ category }}" aria-label="{{ category }}"></button>
+  {% endfor %}
+</nav>
+
+<!-- Track height scales with the number of branches (about 1.3 screens each) -->
+<div class="scroll-track" id="scrollTrack" style="height: calc({{ curriculum|length }} * 130vh);">
+  <div class="stage">
+    {% for category, subjects in curriculum.items() %}
+      <section class="branch-card" data-title="{{ category }}">
+        <span class="branch-index">Branch {{ loop.index }} of {{ curriculum|length }}</span>
+        <h3>{{ category }}</h3>
+        <p class="branch-count">{{ subjects|length }} subject{{ '' if subjects|length == 1 else 's' }}</p>
+        <div class="subjects-grid">
+          {% for code, name in subjects %}
+            <a href="{{ url_for('subject_detail', code=code) }}" class="subject-pill" style="--i: {{ loop.index0 }}">
+              <span class="name">{{ name }}</span>
+              <span class="code">{{ code }}</span>
+            </a>
+          {% endfor %}
         </div>
-    </div>
+      </section>
+    {% endfor %}
+  </div>
+</div>
 
-    <footer class="cinematic-footer">
-        <div>SCROLL TO EXPLORE BRANCHES ↓</div>
-        <div id="progressIndicator" class="active-progress">01 / 12</div>
-    </footer>
+<footer class="cin-footer">
+  <div>Scroll to move through the branches</div>
+  <div class="now"><b id="nowTitle"></b><span id="nowCount">01 / 01</span></div>
+</footer>
 
-    <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            const track = document.getElementById('scrollTrack');
-            const cards = document.querySelectorAll('.branch-card');
-            const progressIndicator = document.getElementById('progressIndicator');
-            const totalCards = cards.length;
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const track = document.getElementById('scrollTrack');
+  const cards = [...document.querySelectorAll('.branch-card')];
+  const dots = [...document.querySelectorAll('#rail button')];
+  const nowTitle = document.getElementById('nowTitle');
+  const nowCount = document.getElementById('nowCount');
+  const glowA = document.getElementById('glowA');
+  const glowB = document.getElementById('glowB');
+  const gridLines = document.getElementById('gridLines');
+  const root = document.documentElement;
+  const N = cards.length;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 
-            window.addEventListener('scroll', () => {
-                const scrollTop = window.scrollY;
-                const maxScroll = track.offsetHeight - window.innerHeight;
-                
-                let scrollFraction = scrollTop / maxScroll;
-                scrollFraction = Math.min(1, Math.max(0, scrollFraction));
+  let target = 0, current = 0, running = false, lastActive = -1;
 
-                // Determine active card based on scroll percentage
-                let activeIndex = Math.min(
-                    totalCards - 1,
-                    Math.floor(scrollFraction * totalCards)
-                );
+  const maxScroll = () => Math.max(1, track.offsetHeight - innerHeight);
+  const readTarget = () => { target = clamp(scrollY / maxScroll()) * (N - 1); };
 
-                cards.forEach((card, idx) => {
-                    if (idx === activeIndex) {
-                        card.classList.add('active');
-                    } else {
-                        card.classList.remove('active');
-                    }
-                });
+  function render() {
+    // Cards: each one is placed by its distance from the current (smoothed) position
+    cards.forEach((card, i) => {
+      const d = i - current, a = Math.abs(d);
+      const op = clamp(1 - a * 1.35);
+      card.style.opacity = op.toFixed(3);
+      card.style.visibility = op < 0.01 ? 'hidden' : 'visible';
+      card.style.transform =
+        `translate3d(0, ${(d * 18).toFixed(2)}vh, ${(-a * 220).toFixed(1)}px) ` +
+        `rotateX(${(-d * 12).toFixed(2)}deg) scale(${(1 - Math.min(a, 1) * 0.1).toFixed(3)})`;
+      card.style.filter = a > 0.03 ? `blur(${(Math.min(a, 1) * 9).toFixed(1)}px)` : 'none';
+      card.classList.toggle('active', a < 0.5);
+    });
 
-                // Update footer indicator
-                let currentNum = (activeIndex + 1).toString().padStart(2, '0');
-                let totalNum = totalCards.toString().padStart(2, '0');
-                progressIndicator.innerText = `${currentNum} / ${totalNum}`;
-            });
-        });
-    </script>
+    // Backdrop drifts and shifts colour as you move through the branches
+    const p = N > 1 ? current / (N - 1) : 0;
+    root.style.setProperty('--hue', (195 + current * 22).toFixed(1));
+    glowA.style.transform = `translate3d(${(p * 38).toFixed(1)}vw, ${(p * 30).toFixed(1)}vh, 0)`;
+    glowB.style.transform = `translate3d(${(-p * 34).toFixed(1)}vw, ${(-p * 26).toFixed(1)}vh, 0)`;
+    gridLines.style.transform = `translate3d(0, ${(-current * 90).toFixed(1)}px, 0)`;
+
+    // Footer + rail
+    const idx = Math.round(current);
+    if (idx !== lastActive) {
+      lastActive = idx;
+      nowTitle.textContent = cards[idx].dataset.title;
+      nowCount.textContent = `${String(idx + 1).padStart(2, '0')} / ${String(N).padStart(2, '0')}`;
+      dots.forEach((b, k) => b.classList.toggle('on', k === idx));
+    }
+  }
+
+  // Inertia loop: eases toward the scroll position so motion always glides
+  function tick() {
+    const diff = target - current;
+    if (reduce || Math.abs(diff) < 0.0008) { current = target; render(); running = false; return; }
+    current += diff * 0.075;
+    render();
+    requestAnimationFrame(tick);
+  }
+  function kick() { readTarget(); if (!running) { running = true; requestAnimationFrame(tick); } }
+
+  addEventListener('scroll', kick, { passive: true });
+  addEventListener('resize', kick);
+
+  // Jump to a branch from the side rail
+  dots.forEach(b => b.addEventListener('click', () => {
+    const i = +b.dataset.i;
+    scrollTo({ top: N > 1 ? (i / (N - 1)) * maxScroll() : 0, behavior: reduce ? 'auto' : 'smooth' });
+  }));
+
+  // Keyboard: arrows / page keys move one branch at a time
+  addEventListener('keydown', e => {
+    const next = { ArrowDown: 1, PageDown: 1, ArrowUp: -1, PageUp: -1 }[e.key];
+    if (!next || e.target.closest('.subjects-grid')) return;
+    e.preventDefault();
+    const i = clamp(Math.round(current) + next, 0, N - 1);
+    scrollTo({ top: N > 1 ? (i / (N - 1)) * maxScroll() : 0, behavior: reduce ? 'auto' : 'smooth' });
+  });
+
+  // First frame: start at the opening branch (also restores position on refresh)
+  readTarget(); current = target; render();
+});
+</script>
 </body>
 </html>
