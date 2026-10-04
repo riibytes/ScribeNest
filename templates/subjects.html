@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curriculum Subjects // ScribeNest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            background-color: #05070c;
+            color: #e2e8f0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+        .back {
+            display: inline-block;
+            margin-bottom: 25px;
+            color: #38bdf8;
+            text-decoration: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+        .back:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 40px;
+        }
+        .category-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+        }
+        .category-card h3 {
+            font-family: 'JetBrains Mono', monospace;
+            color: #38bdf8;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+        }
+        .subject-list {
+            list-style: none;
+            padding: 0;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .subject-item a {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px 16px;
+            border-radius: 4px;
+            color: #e2e8f0;
+            text-decoration: none;
+            border: 1px solid transparent;
+            transition: 0.2s ease;
+        }
+        .subject-item a:hover {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.05);
+            color: #38bdf8;
+        }
+        .code {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: bold;
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="{{ url_for('home') }}" class="back">← BACK TO HOME</a>
+    
+    <h1>University Curriculum</h1>
+    <p class="subtitle">Explore all 12 official curriculum categories and subjects. Click any subject to view shared notes (requires login).</p>
+
+    {% for category, subjects in curriculum.items() %}
+        <div class="category-card">
+            <h3>{{ category }}</h3>
+            <ul class="subject-list">
+                {% for code, name in subjects %}
+                    <li class="subject-item">
+                        <a href="{{ url_for('subject_detail', code=code) }}">
+                            <span class="name">{{ name }}</span>
+                            <span class="code">{{ code }}</span>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+</div>
+
+</body>
+</html>
