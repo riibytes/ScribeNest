@@ -79,26 +79,20 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'}
 )
 
-# Always use the folder where app.py is located
-BASE_DIR = os.path.dirname(
-    os.path.abspath(__file__)
-)
-
-# Vercel has a read-only root system, use /tmp for serverless SQLite persistence
+# Serverless path configuration for Vercel read-only system vs local
 if os.environ.get("VERCEL"):
-    DATABASE = os.path.join("/tmp", "database.db")
-else:
+    BASE_DIR = "/tmp"
     DATABASE = os.path.join(BASE_DIR, "database.db")
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATABASE = os.path.join(BASE_DIR, "database.db")
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 
 
 # =========================================================
 # FILE UPLOAD CONFIGURATION
 # =========================================================
-
-UPLOAD_FOLDER = os.path.join(
-    BASE_DIR,
-    "uploads"
-)
 
 PDF_FOLDER = os.path.join(
     UPLOAD_FOLDER,
@@ -197,45 +191,48 @@ def get_db():
 
 
 def init_db():
-    db = get_db()
+    try:
+        db = get_db()
 
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            program TEXT DEFAULT '',
-            content TEXT NOT NULL,
-            tags TEXT DEFAULT '',
-            is_public INTEGER DEFAULT 0,
-            is_favorite INTEGER DEFAULT 0,
-            file_name TEXT DEFAULT '',
-            file_path TEXT DEFAULT '',
-            file_type TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id)
-            REFERENCES users(id)
-            ON DELETE CASCADE
-        )
-    """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                program TEXT DEFAULT '',
+                content TEXT NOT NULL,
+                tags TEXT DEFAULT '',
+                is_public INTEGER DEFAULT 0,
+                is_favorite INTEGER DEFAULT 0,
+                file_name TEXT DEFAULT '',
+                file_path TEXT DEFAULT '',
+                file_type TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE
+            )
+        """)
 
-    db.commit()
-    db.close()
+        db.commit()
+        db.close()
 
-    os.makedirs(PDF_FOLDER, exist_ok=True)
-    os.makedirs(IMAGE_FOLDER, exist_ok=True)
+        os.makedirs(PDF_FOLDER, exist_ok=True)
+        os.makedirs(IMAGE_FOLDER, exist_ok=True)
+    except Exception as e:
+        print(f"Database init handled: {e}")
 
 
 # =========================================================
