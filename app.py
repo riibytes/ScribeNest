@@ -1,8 +1,26 @@
 import os
 import sqlite3
 import uuid
+import requests
 from authlib.integrations.flask_client import OAuth
 from functools import wraps
+from pypdf import PdfReader
+import io
+
+def extract_text_from_pdf(file_storage_or_bytes):
+    try:
+        if isinstance(file_storage_or_bytes, bytes):
+            reader = PdfReader(io.BytesIO(file_storage_or_bytes))
+        else:
+            reader = PdfReader(file_storage_or_bytes)
+        text = ""
+        for page in reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted + "\n"
+        return text
+    except Exception:
+        return ""
 
 from flask import (
     Flask,
@@ -43,10 +61,13 @@ app.secret_key = os.getenv(
     "dev-secret-change-this"
 )
 
-# Initialize Supabase Client
+# Initialize Supabase Client Safely for Serverless
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(url, key) if url and key else None
+try:
+    supabase: Client = create_client(url, key) if url and key else None
+except Exception:
+    supabase = None
 
 # Initialize OAuth for Google Login
 oauth = OAuth(app)
@@ -177,9 +198,6 @@ def get_db():
 def init_db():
     db = get_db()
 
-    # =====================================================
-    # USERS
-    # =====================================================
     db.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -190,9 +208,6 @@ def init_db():
         )
     """)
 
-    # =====================================================
-    # NOTES
-    # =====================================================
     db.execute("""
         CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -685,17 +700,18 @@ def upload_note():
         unique_filename = str(uuid.uuid4()) + extension_with_dot
         storage_path = f"uploads/{unique_filename}"
 
+        if supabase is None:
+            flash("Supabase storage is not configured.", "error")
+            return redirect(url_for("upload_note"))
+
         try:
-            # Upload to Supabase Bucket 'notes-bucket'
             file_bytes = uploaded_file.read()
             supabase.storage.from_("notes-bucket").upload(
                 path=storage_path,
                 file=file_bytes,
                 file_options={"content-type": uploaded_file.content_type}
             )
-            # Fetch public URL from Supabase
             public_url_response = supabase.storage.from_("notes-bucket").get_public_url(storage_path)
-            # Handle response structure depending on client version
             database_file_path = public_url_response if isinstance(public_url_response, str) else public_url_response.get("publicUrl", storage_path)
         except Exception as e:
             flash(f"Cloud upload failed: {str(e)}", "error")
@@ -1102,7 +1118,7 @@ def vault():
 
 
 # =========================================================
-# AI TOOLS
+# AI TOOLS (WITH SUPABASE PDF FILE EXTRACTION SUPPORT)
 # =========================================================
 
 def get_ai_client():
@@ -1121,7 +1137,7 @@ def ask_ai(prompt):
     if client is None:
         return (
             "AI is not configured yet. "
-            "Add your OPENAI_API_KEY to the .env file."
+            "Add your OPENAI_API_KEY to your environment variables."
         )
 
     try:
@@ -1149,20 +1165,29 @@ def ai_tools():
     result = None
 
     if request.method == "POST":
-        content = (
-            request.form.get(
-                "content",
-                ""
-            )
-            .strip()
-        )
-        action = request.form.get(
-            "action"
-        )
+        content = request.form.get("content", "").strip()
+        action = request.form.get("action")
+        note_id = request.form.get("note_id")
+
+        if note_id:
+            db = get_db()
+            note = db.execute("SELECT * FROM notes WHERE id = ? AND (user_id = ? OR is_public = 1)", (note_id, session["user_id"])).fetchone()
+            db.close()
+            if note:
+                if note["file_type"] == "pdf" and note["file_path"]:
+                    try:
+                        res = requests.get(note["file_path"])
+                        if res.status_code == 200:
+                            pdf_extracted = extract_text_from_pdf(res.content)
+                            content = pdf_extracted + "\n" + note["content"]
+                    except Exception:
+                        content = note["content"]
+                else:
+                    content = note["content"]
 
         if not content:
             flash(
-                "Please enter some study material.",
+                "Please enter study material or select a note with content.",
                 "error"
             )
             return redirect(
@@ -1235,9 +1260,14 @@ Student question:
             prompt
         )
 
+    db = get_db()
+    user_notes = db.execute("SELECT id, title, subject FROM notes WHERE user_id = ? ORDER BY updated_at DESC", (session["user_id"],)).fetchall()
+    db.close()
+
     return render_template(
         "ai.html",
-        result=result
+        result=result,
+        notes=user_notes
     )
 
 
@@ -1260,7 +1290,6 @@ def file_too_large(error):
 # START APPLICATION & PRODUCTION HOOK
 # =========================================================
 
-# Automatically initialize database tables when running on Render or locally
 init_db()
 
 if __name__ == "__main__":
