@@ -3,111 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Curriculum Subjects // ScribeNest</title>
+    <title>Cinematic Curriculum // ScribeNest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: #05070c;
+            background-color: #000000;
             color: #e2e8f0;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            padding: 40px 20px;
+            overflow-x: hidden;
         }
-        .container {
-            max-width: 900px;
-            margin: auto;
+
+        /* Top Navigation Header */
+        .cinematic-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            padding: 30px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+            pointer-events: auto;
         }
-        .back {
-            display: inline-block;
-            margin-bottom: 25px;
+
+        .cinematic-header a {
             color: #38bdf8;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.15em;
             text-decoration: none;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
         }
-        .back:hover {
-            text-decoration: underline;
-        }
-        h1 {
+
+        .cinematic-header h2 {
             font-family: 'Cinzel', serif;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            color: #ffffff;
-        }
-        .subtitle {
-            color: #94a3b8;
-            margin-bottom: 40px;
-        }
-        .category-card {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            border-radius: 8px;
-            padding: 25px;
-            margin-bottom: 25px;
-            backdrop-filter: blur(10px);
-        }
-        .category-card h3 {
-            font-family: 'JetBrains Mono', monospace;
-            color: #38bdf8;
             font-size: 1.1rem;
-            margin-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 8px;
+            color: #fff;
+            letter-spacing: 0.2em;
         }
-        .subject-list {
-            list-style: none;
-            padding: 0;
+
+        /* Long scroll track to trigger cinematic card swaps */
+        .curriculum-scroll-track {
+            height: 1200vh;
+            position: relative;
+        }
+
+        /* Pinned viewport stage */
+        .curriculum-stage {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 40px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* Individual Branch Cards */
+        .branch-card {
+            position: absolute;
+            width: 100%;
+            max-width: 800px;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            backdrop-filter: blur(16px);
+            border-radius: 12px;
+            padding: 40px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(40px) scale(0.95);
+            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+
+        .branch-card.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+        }
+
+        .branch-index {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.15em;
+            color: #38bdf8;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .branch-card h3 {
+            font-family: 'Cinzel', serif;
+            font-size: 1.8rem;
+            color: #ffffff;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        /* Subject Grid with Hover Mechanics */
+        .subjects-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 12px;
+            max-height: 45vh;
+            overflow-y: auto;
+            padding-right: 5px;
         }
-        .subject-item a {
+
+        .subject-pill {
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: rgba(255, 255, 255, 0.03);
-            padding: 12px 16px;
-            border-radius: 4px;
-            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 14px 18px;
+            border-radius: 6px;
+            color: #cbd5e1;
             text-decoration: none;
-            border: 1px solid transparent;
-            transition: 0.2s ease;
+            transition: all 0.25s ease;
         }
-        .subject-item a:hover {
+
+        .subject-pill:hover {
+            background: rgba(56, 189, 248, 0.08);
             border-color: #38bdf8;
-            background: rgba(56, 189, 248, 0.05);
+            color: #ffffff;
+            transform: translateX(4px);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
+        }
+
+        .subject-pill .code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #38bdf8;
+            font-weight: 500;
+        }
+
+        .subject-pill .name {
+            font-size: 0.9rem;
+            font-weight: 400;
+        }
+
+        /* Progress HUD Footer */
+        .cinematic-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100vw;
+            padding: 30px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 100;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            pointer-events: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #64748b;
+            letter-spacing: 0.1em;
+        }
+
+        .cinematic-footer .active-progress {
             color: #38bdf8;
         }
-        .code {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: bold;
-            color: #38bdf8;
+
+        @media(max-width: 768px) {
+            .cinematic-header, .cinematic-footer {
+                padding: 20px;
+            }
+            .branch-card {
+                padding: 25px;
+            }
+            .branch-card h3 {
+                font-size: 1.3rem;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <a href="{{ url_for('home') }}" class="back">← BACK TO HOME</a>
-    
-    <h1>University Curriculum</h1>
-    <p class="subtitle">Explore all 12 official curriculum categories and subjects. Click any subject to view shared notes (requires login).</p>
+    <header class="cinematic-header">
+        <a href="{{ url_for('home') }}">← BACK TO HOME</a>
+        <h2 class="serif">SCRIBENEST CURRICULUM</h2>
+    </header>
 
-    {% for category, subjects in curriculum.items() %}
-        <div class="category-card">
-            <h3>{{ category }}</h3>
-            <ul class="subject-list">
-                {% for code, name in subjects %}
-                    <li class="subject-item">
-                        <a href="{{ url_for('subject_detail', code=code) }}">
-                            <span class="name">{{ name }}</span>
-                            <span class="code">{{ code }}</span>
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
+    <!-- Scroll Track (controls scroll length) -->
+    <div class="curriculum-scroll-track" id="scrollTrack">
+        <div class="curriculum-stage">
+            
+            {% set outer_loop = loop %}
+            {% for category, subjects in curriculum.items() %}
+                <div class="branch-card {% if loop.first %}active{% endif %}" data-index="{{ loop.index0 }}">
+                    <span class="branch-index">// BRANCH SECTION 0{{ loop.index }} OF 12</span>
+                    <h3>{{ category }}</h3>
+                    
+                    <div class="subjects-grid">
+                        {% for code, name in subjects %}
+                            <a href="{{ url_for('subject_detail', code=code) }}" class="subject-pill">
+                                <span class="name">{{ name }}</span>
+                                <span class="code">{{ code }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+
         </div>
-    {% endfor %}
-</div>
+    </div>
 
+    <footer class="cinematic-footer">
+        <div>SCROLL TO EXPLORE BRANCHES ↓</div>
+        <div id="progressIndicator" class="active-progress">01 / 12</div>
+    </footer>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const track = document.getElementById('scrollTrack');
+            const cards = document.querySelectorAll('.branch-card');
+            const progressIndicator = document.getElementById('progressIndicator');
+            const totalCards = cards.length;
+
+            window.addEventListener('scroll', () => {
+                const scrollTop = window.scrollY;
+                const maxScroll = track.offsetHeight - window.innerHeight;
+                
+                let scrollFraction = scrollTop / maxScroll;
+                scrollFraction = Math.min(1, Math.max(0, scrollFraction));
+
+                // Determine active card based on scroll percentage
+                let activeIndex = Math.min(
+                    totalCards - 1,
+                    Math.floor(scrollFraction * totalCards)
+                );
+
+                cards.forEach((card, idx) => {
+                    if (idx === activeIndex) {
+                        card.classList.add('active');
+                    } else {
+                        card.classList.remove('active');
+                    }
+                });
+
+                // Update footer indicator
+                let currentNum = (activeIndex + 1).toString().padStart(2, '0');
+                let totalNum = totalCards.toString().padStart(2, '0');
+                progressIndicator.innerText = `${currentNum} / ${totalNum}`;
+            });
+        });
+    </script>
 </body>
 </html>
