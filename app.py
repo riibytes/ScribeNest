@@ -325,13 +325,24 @@ def login_required(function):
                 "error"
             )
             return redirect(
-                url_for("login")
+                url_for(
+                    "login",
+                    next=request.path if request.method == "GET" else None
+                )
             )
         return function(
             *args,
             **kwargs
         )
     return wrapper
+
+
+def get_safe_next():
+    """Return the saved post-login page, only if it is a local path."""
+    target = session.pop("next_url", "") or ""
+    if target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        return target
+    return None
 
 
 # =========================================================
@@ -354,11 +365,11 @@ def public_subjects():
     return render_template("subjects.html", curriculum=VIT_CURRICULUM_DATA)
 
 
-@app.route("/subjects/")
+@app.route("/subjects/<code>")
 def subject_detail(code):
     if "user_id" not in session:
         flash("Please login first to view notes and materials for this subject.", "error")
-        return redirect(url_for("login"))
+        return redirect(url_for("login", next=request.path))
     
     db = get_db()
     notes = db.execute(
@@ -424,7 +435,7 @@ def google_authorized():
     session["user_name"] = user["name"]
 
     flash("Welcome back to ScribeNest!", "success")
-    return redirect(url_for("dashboard"))
+    return redirect(get_safe_next() or url_for("dashboard"))
 
 
 # =========================================================
@@ -538,6 +549,12 @@ def register():
     methods=["GET", "POST"]
 )
 def login():
+    if request.method == "GET":
+        if request.args.get("next"):
+            session["next_url"] = request.args["next"]
+        else:
+            session.pop("next_url", None)
+
     if request.method == "POST":
         email = (
             request.form["email"]
@@ -568,7 +585,7 @@ def login():
                 "success"
             )
             return redirect(
-                url_for("dashboard")
+                get_safe_next() or url_for("dashboard")
             )
 
         flash(
@@ -863,7 +880,7 @@ def upload_note():
 # =========================================================
 
 @app.route(
-    "/notes/"
+    "/notes/<int:note_id>"
 )
 @login_required
 def view_note(note_id):
@@ -916,7 +933,7 @@ def view_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes//edit",
+    "/notes/<int:note_id>/edit",
     methods=["GET", "POST"]
 )
 @login_required
@@ -1028,7 +1045,7 @@ def edit_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes//delete",
+    "/notes/<int:note_id>/delete",
     methods=["POST"]
 )
 @login_required
@@ -1062,7 +1079,7 @@ def delete_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes//favorite",
+    "/notes/<int:note_id>/favorite",
     methods=["POST"]
 )
 @login_required
