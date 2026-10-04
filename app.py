@@ -80,6 +80,7 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'}
 )
 
+
 # =========================================================
 # FILE UPLOAD CONFIGURATION
 # =========================================================
@@ -236,7 +237,7 @@ VIT_CURRICULUM_DATA = {
 
 
 # =========================================================
-# DATABASE CONNECTION & SETUP (SUPABASE POSTGRESQL)
+# DATABASE CONNECTION (SUPABASE POSTGRESQL)
 # =========================================================
 
 def get_db():
@@ -616,7 +617,7 @@ def dashboard():
 
     cur.execute(
         """
-        SELECT COUNT(*)
+        SELECT COUNT(*) AS count
         FROM notes
         WHERE user_id = %s
         AND is_favorite = 1
@@ -625,11 +626,12 @@ def dashboard():
             session["user_id"],
         )
     )
-    favorite_count = cur.fetchone()['count'] if 'count' in cur.fetchone() else 0
+    fav_res = cur.fetchone()
+    favorite_count = fav_res['count'] if fav_res and 'count' in fav_res else 0
 
     cur.execute(
         """
-        SELECT COUNT(*)
+        SELECT COUNT(*) AS count
         FROM notes
         WHERE user_id = %s
         AND is_public = 1
@@ -638,7 +640,8 @@ def dashboard():
             session["user_id"],
         )
     )
-    public_count = cur.fetchone()['count'] if 'count' in cur.fetchone() else 0
+    pub_res = cur.fetchone()
+    public_count = pub_res['count'] if pub_res and 'count' in pub_res else 0
 
     cur.close()
     conn.close()
