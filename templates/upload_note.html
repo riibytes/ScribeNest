@@ -1,131 +1,636 @@
+```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Upload Note // ScribeNest</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
     <style>
-        .field-select {
-            width: 100%; padding: 14px; margin-bottom: 22px; border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.25);
-            color: white; outline: none;
+        .upload-container {
+            max-width: 850px;
+            margin: 40px auto;
+            padding: 0 20px 60px;
         }
-        [hidden] { display: none !important; }
-        .field-select:disabled { opacity: .55; cursor: not-allowed; }
-        .field-select option { color: #0f172a; }
-        .field-file { width: 100%; margin-bottom: 8px; color: #cbd5e1; }
-        .field-hint { font-size: .8rem; color: #94a3b8; margin-bottom: 22px; }
-        .flash { padding: 12px 16px; border-radius: 8px; margin-bottom: 18px; font-size: .9rem; }
-        .flash.error { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.5); color: #fecaca; }
-        .flash.success { background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.5); color: #bbf7d0; }
+
+        .field-select,
+        .field-input,
+        .field-textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 14px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.25);
+            color: white;
+            outline: none;
+            font-family: inherit;
+            font-size: 15px;
+        }
+
+        .field-select:focus,
+        .field-input:focus,
+        .field-textarea:focus {
+            border-color: #8b5cf6;
+        }
+
+        .field-select option {
+            color: #0f172a;
+            background: white;
+        }
+
+        .field-select optgroup {
+            color: #0f172a;
+            background: white;
+            font-weight: bold;
+        }
+
+        .field-textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .field-file {
+            width: 100%;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+        }
+
+        .field-hint {
+            font-size: 0.82rem;
+            color: #94a3b8;
+            margin-top: -12px;
+            margin-bottom: 22px;
+        }
+
+        .required {
+            color: #f87171;
+        }
+
+        .flash {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            font-size: 0.9rem;
+        }
+
+        .flash.error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fecaca;
+        }
+
+        .flash.success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            color: #bbf7d0;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0 25px;
+            color: #cbd5e1;
+        }
+
+        .checkbox-row input {
+            width: 17px;
+            height: 17px;
+            cursor: pointer;
+        }
+
+        .upload-box {
+            padding: 25px;
+            border: 1px dashed rgba(255, 255, 255, 0.25);
+            border-radius: 14px;
+            margin-bottom: 25px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .upload-box-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .upload-box-description {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .field-select:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .primary-button {
+            width: 100%;
+            cursor: pointer;
+        }
     </style>
 </head>
+
 <body>
 
-<nav class="dashboard-nav">
-    <div class="logo">SCRIBENEST</div>
-    <a href="{{ url_for('dashboard') }}">← Dashboard</a>
-</nav>
+    <!-- =========================
+         NAVIGATION
+    ========================== -->
 
-<main class="editor">
+    <nav class="dashboard-nav">
+        <div class="logo">SCRIBENEST</div>
 
-    <p class="eyebrow">SCRIBENEST // UPLOAD NOTE</p>
-    <h1>Upload a Note</h1>
+        <a href="{{ url_for('dashboard') }}">
+            ← Dashboard
+        </a>
+    </nav>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
-        {% endfor %}
-    {% endwith %}
 
-    <form method="POST" enctype="multipart/form-data">
+    <!-- =========================
+         MAIN CONTENT
+    ========================== -->
 
-        <label>Topic name</label>
-        <input type="text" name="title" placeholder="e.g. Process Scheduling" required>
+    <main class="editor upload-container">
 
-        <label>Tags</label>
-        <input type="text" name="tags" placeholder="os, scheduling, fcfs (separate with commas)">
+        <p class="eyebrow">
+            SCRIBENEST // UPLOAD NOTE
+        </p>
 
-        <label>Programme</label>
-        <select name="program" id="program" class="field-select" required>
-            <option value="">Select a programme</option>
-            {% for group, names in programs.items() %}
-                <optgroup label="{{ group }}">
-                    {% for name in names %}
-                        <option value="{{ name }}">{{ name }}</option>
-                    {% endfor %}
-                </optgroup>
+        <h1>Upload a Note</h1>
+
+        <p style="color:#94a3b8; margin-bottom:30px;">
+            Upload your study material and organize it by programme and subject.
+        </p>
+
+
+        <!-- =========================
+             FLASH MESSAGES
+        ========================== -->
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+
+            {% for category, message in messages %}
+
+                <div class="flash {{ category }}">
+                    {{ message }}
+                </div>
+
             {% endfor %}
-        </select>
 
-        <label>Subject</label>
-        <select name="subject" id="subject" class="field-select" required>
-            <option value="">Select a programme first</option>
-            {% for prog, categories in curricula.items() %}
-                {% for category, subjects in categories.items() %}
-                    {% for code, name in subjects %}
-                        <option value="{{ code }}" data-program="{{ prog }}" data-category="{{ category }}">{{ code }} - {{ name }}</option>
-                    {% endfor %}
+        {% endwith %}
+
+
+        <!-- =========================
+             UPLOAD FORM
+        ========================== -->
+
+        <form
+            method="POST"
+            action="{{ url_for('upload_note') }}"
+            enctype="multipart/form-data"
+        >
+
+            <!-- TITLE -->
+
+            <label for="title">
+                Topic / Note Title
+                <span class="required">*</span>
+            </label>
+
+            <input
+                type="text"
+                id="title"
+                name="title"
+                class="field-input"
+                placeholder="e.g. Process Scheduling"
+                maxlength="150"
+                required
+            >
+
+
+            <!-- PROGRAMME -->
+
+            <label for="program">
+                Programme
+                <span class="required">*</span>
+            </label>
+
+            <select
+                name="program"
+                id="program"
+                class="field-select"
+                required
+            >
+
+                <option value="">
+                    Select a programme
+                </option>
+
+                {% for group, names in programs.items() %}
+
+                    <optgroup label="{{ group }}">
+
+                        {% for name in names %}
+
+                            <option value="{{ name }}">
+                                {{ name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </optgroup>
+
                 {% endfor %}
-            {% endfor %}
-        </select>
-        <input type="text" name="subject_text" id="subjectText" maxlength="120"
-               placeholder="Type the subject name, e.g. Thermodynamics" hidden disabled>
 
-        <label>File</label>
-        <input type="file" name="file" class="field-file" required
-               accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.ppt,.pptx">
-        <p class="field-hint">PDF, image, Word or PowerPoint. Maximum {{ max_mb }} MB.</p>
+            </select>
 
-        <label class="checkbox">
-            <input type="checkbox" name="is_public">
-            Make this note public
-        </label>
 
-        <button class="primary-button" type="submit">UPLOAD NOTE</button>
+            <!-- SUBJECT -->
 
-    </form>
+            <label for="subject">
+                Subject
+                <span class="required">*</span>
+            </label>
 
-</main>
+            <select
+                name="subject"
+                id="subject"
+                class="field-select"
+                required
+            >
 
-<script>
-    // Programmes with a stored curriculum get a subject dropdown (grouped by category);
-    // every other programme gets a box to type the subject.
-    const programSelect = document.getElementById('program');
-    const subjectSelect = document.getElementById('subject');
-    const subjectText = document.getElementById('subjectText');
-    const allSubjects = [...subjectSelect.querySelectorAll('option[data-program]')].map(o => ({
-        value: o.value, text: o.textContent, program: o.dataset.program, category: o.dataset.category
-    }));
+                <option value="">
+                    Select a programme first
+                </option>
 
-    function updateSubject() {
-        const chosen = programSelect.value;
-        const list = allSubjects.filter(s => s.program === chosen);
-        const typed = chosen !== '' && list.length === 0;
+                {% for prog, categories in curricula.items() %}
 
-        subjectSelect.innerHTML = '';
-        subjectSelect.add(new Option(chosen ? 'Select a subject' : 'Select a programme first', ''));
+                    {% for category, subjects in categories.items() %}
 
-        const groups = {};
-        list.forEach(s => {
-            if (!groups[s.category]) {
-                groups[s.category] = document.createElement('optgroup');
-                groups[s.category].label = s.category;
-                subjectSelect.appendChild(groups[s.category]);
-            }
-            groups[s.category].appendChild(new Option(s.text, s.value));
-        });
+                        {% for code, name in subjects %}
 
-        subjectSelect.hidden = typed;
-        subjectSelect.disabled = typed || !chosen;
-        subjectSelect.required = !typed;
-        subjectText.hidden = !typed;
-        subjectText.disabled = !typed;
-        subjectText.required = typed;
-    }
+                            <option
+                                value="{{ code }}"
+                                data-program="{{ prog }}"
+                                data-category="{{ category }}"
+                            >
+                                {{ code }} - {{ name }}
+                            </option>
 
-    programSelect.addEventListener('change', updateSubject);
-    updateSubject();
-</script>
+                        {% endfor %}
+
+                    {% endfor %}
+
+                {% endfor %}
+
+            </select>
+
+
+            <!-- CUSTOM SUBJECT -->
+
+            <input
+                type="text"
+                name="subject_text"
+                id="subjectText"
+                class="field-input"
+                maxlength="120"
+                placeholder="Type the subject name"
+                hidden
+                disabled
+            >
+
+
+            <!-- TAGS -->
+
+            <label for="tags">
+                Tags
+            </label>
+
+            <input
+                type="text"
+                id="tags"
+                name="tags"
+                class="field-input"
+                placeholder="e.g. os, scheduling, sjf, cpu"
+            >
+
+            <p class="field-hint">
+                Separate multiple tags with commas.
+            </p>
+
+
+            <!-- CONTENT -->
+
+            <label for="content">
+                Description / Additional Content
+            </label>
+
+            <textarea
+                id="content"
+                name="content"
+                class="field-textarea"
+                placeholder="Add a short description, important points, or any additional information about this note..."
+            ></textarea>
+
+            <p class="field-hint">
+                Optional. This content can also be used later by ScribeNest AI.
+            </p>
+
+
+            <!-- FILE -->
+
+            <div class="upload-box">
+
+                <div class="upload-box-title">
+                    Upload Study Material
+                </div>
+
+                <div class="upload-box-description">
+                    Supported formats: PDF, images, Word documents and PowerPoint presentations.
+                </div>
+
+                <input
+                    type="file"
+                    id="file"
+                    name="file"
+                    class="field-file"
+                    accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.ppt,.pptx"
+                    required
+                >
+
+                <p class="field-hint">
+                    Maximum file size: {{ max_mb }} MB
+                </p>
+
+            </div>
+
+
+            <!-- PUBLIC NOTE -->
+
+            <label class="checkbox-row">
+
+                <input
+                    type="checkbox"
+                    name="is_public"
+                    id="is_public"
+                    value="1"
+                >
+
+                <span>
+                    Make this note public and allow other students to view it.
+                </span>
+
+            </label>
+
+
+            <!-- SUBMIT -->
+
+            <button
+                class="primary-button"
+                type="submit"
+            >
+                UPLOAD NOTE
+            </button>
+
+        </form>
+
+    </main>
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
+
+    <script>
+
+        const programSelect =
+            document.getElementById("program");
+
+        const subjectSelect =
+            document.getElementById("subject");
+
+        const subjectText =
+            document.getElementById("subjectText");
+
+
+        /*
+         * Store all curriculum subjects
+         * provided by Flask.
+         */
+
+        const allSubjects = [
+            ...subjectSelect.querySelectorAll(
+                "option[data-program]"
+            )
+        ].map(option => ({
+
+            value: option.value,
+
+            text: option.textContent.trim(),
+
+            program: option.dataset.program,
+
+            category: option.dataset.category
+
+        }));
+
+
+        /*
+         * Update subject dropdown whenever
+         * the programme changes.
+         */
+
+        function updateSubject() {
+
+            const selectedProgram =
+                programSelect.value;
+
+
+            const matchingSubjects =
+                allSubjects.filter(
+                    subject =>
+                        subject.program === selectedProgram
+                );
+
+
+            /*
+             * If the selected programme has
+             * no predefined subjects, allow
+             * the user to type one manually.
+             */
+
+            const allowCustomSubject =
+                selectedProgram !== "" &&
+                matchingSubjects.length === 0;
+
+
+            /*
+             * Clear current subject options.
+             */
+
+            subjectSelect.innerHTML = "";
+
+
+            /*
+             * Add default option.
+             */
+
+            subjectSelect.add(
+                new Option(
+                    selectedProgram
+                        ? "Select a subject"
+                        : "Select a programme first",
+                    ""
+                )
+            );
+
+
+            /*
+             * Group subjects by category.
+             */
+
+            const groups = {};
+
+
+            matchingSubjects.forEach(subject => {
+
+                if (!groups[subject.category]) {
+
+                    groups[subject.category] =
+                        document.createElement("optgroup");
+
+                    groups[subject.category].label =
+                        subject.category;
+
+                    subjectSelect.appendChild(
+                        groups[subject.category]
+                    );
+                }
+
+
+                groups[subject.category].appendChild(
+
+                    new Option(
+                        subject.text,
+                        subject.value
+                    )
+
+                );
+
+            });
+
+
+            /*
+             * Switch between dropdown and
+             * custom subject input.
+             */
+
+            subjectSelect.hidden =
+                allowCustomSubject;
+
+            subjectSelect.disabled =
+                allowCustomSubject ||
+                !selectedProgram;
+
+            subjectSelect.required =
+                !allowCustomSubject;
+
+
+            subjectText.hidden =
+                !allowCustomSubject;
+
+            subjectText.disabled =
+                !allowCustomSubject;
+
+            subjectText.required =
+                allowCustomSubject;
+
+        }
+
+
+        /*
+         * When programme changes.
+         */
+
+        programSelect.addEventListener(
+            "change",
+            updateSubject
+        );
+
+
+        /*
+         * Initial state.
+         */
+
+        updateSubject();
+
+
+        /*
+         * Before submitting, if a custom subject
+         * was entered, copy it into the actual
+         * subject field expected by Flask.
+         */
+
+        document.querySelector("form")
+            .addEventListener("submit", function () {
+
+                if (!subjectSelect.hidden) {
+                    return;
+                }
+
+
+                const customSubject =
+                    subjectText.value.trim();
+
+
+                if (customSubject) {
+
+                    /*
+                     * Flask expects:
+                     * request.form.get("subject")
+                     */
+
+                    subjectSelect.disabled = false;
+
+                    subjectSelect.required = false;
+
+                    /*
+                     * Create a temporary option
+                     * containing the custom subject.
+                     */
+
+                    const customOption =
+                        new Option(
+                            customSubject,
+                            customSubject,
+                            true,
+                            true
+                        );
+
+                    subjectSelect.innerHTML = "";
+
+                    subjectSelect.appendChild(
+                        customOption
+                    );
+
+                }
+
+            });
+
+    </script>
 
 </body>
+
 </html>
+```

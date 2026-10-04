@@ -115,124 +115,154 @@ app.config["MAX_CONTENT_LENGTH"] = (
 # =========================================================
 
 VIT_CURRICULUM_DATA = {
-    "Programme Core": [
-        ("CCA2001", "Cloud Computing and Virtualization"),
-        ("CCA2002", "Cloud Architecture and Services"),
-        ("CCA2006", "Cloud Automation Tools and Applications"),
-        ("CCA3001", "Cloud Data Management"),
-        ("CCA3002", "Fog and Edge Computing"),
-        ("CCA3006", "Cloud Security Management"),
-        ("CCA3007", "High Performance Computing"),
-        ("CSD3009", "DATA STRUCTURES AND ANALYSIS OF ALGORITHMS"),
-        ("CSE2001", "Object Oriented Programming with C++"),
-        ("CSE2003", "Computer Architecture and Organization"),
-        ("CSE2004", "Theory Of Computation And Compiler Design"),
-        ("CSE3001", "Database Management Systems"),
-        ("CSE3003", "Operating System"),
-        ("CSE3006", "Computer Networks"),
-        ("ECE2002", "Digital Logic Design")
-    ],
-    "Programme Elective": [
-        ("CCA2016", "Introduction to Cloud Services"),
-        ("CCA3010", "Containerization and Micro Services"),
-        ("CCA3011", "Internet of Things"),
-        ("CCA3012", "Parallel and Distributed Algorithms"),
-        ("CCA3013", "Cloud Orchestration Services"),
-        ("CCA3016", "Cloud Storage Infrastructures"),
-        ("CCA3017", "Cloud Strategy Planning and Management"),
-        ("CCA4001", "Application Development using Microservices and Serverless Computing"),
-        ("CCA4002", "Sensor-Cloud for Internet of Things"),
-        ("CCA4003", "Container Orchestration and Infrastructure Automation"),
-        ("CCA4004", "Cloud Performance Tuning"),
-        ("CCA4005", "Cloud Application Development"),
-        ("CSE3007", "Artificial Intelligence"),
-        ("CSE3015", "AWS Cloud Practitioner"),
-        ("CSE3016", "AWS Solution Architect"),
-        ("CSE3017", "Salesforce"),
-        ("CSE4003", "Bigdata Analytics")
-    ],
-    "University Core - Natural Science Core": [
-        ("CHY1005", "Introduction to Computational chemistry"),
-        ("MAT1003", "Calculus"),
-        ("MAT2002", "Discrete Mathematics and Graph Theory"),
-        ("MAT3002", "Applied Linear Algebra"),
-        ("MAT3003", "Probability, Statistics and Reliability"),
-        ("PHY1003", "Introduction to Computational Physics")
-    ],
-    "University Core - Basic Engineering Sciences Core": [
-        ("CSA2001", "Fundamentals in AI and ML"),
-        ("EEE1001", "Electric Circuits and Systems"),
-        ("MEE2014", "Engineering Design and Modelling")
-    ],
-    "University Core - Skill Development Courses": [
-        ("CSE1021", "Introduction to Problem Solving and Programming"),
-        ("CSE2006", "Programming in Java"),
-        ("PLA1004", "Competitive Coding Practices"),
-        ("PLA1006", "Lateral Thinking"),
-        ("SST1003", "Professional Communication Skills for Engineers"),
-        ("SST2003", "Dynamics of workplace communication Skills")
-    ],
-    "University Core - Humanities Social Science and Management Core": [
-        ("CHY1006", "Environmental Sustainability"),
-        ("ENG1004", "EFFECTIVE TECHNICAL COMMUNICATION"),
-        ("ENG2005", "Advanced Technical Communication")
-    ],
-    "University Core - Project and Internships": [
-        ("DSN2092", "SUMMER INDUSTRIAL INTERNSHIP"),
-        ("DSN2093", "SEMESTER INTERNSHIP"),
-        ("DSN2098", "Project Exhibition - I"),
-        ("DSN2099", "Project Exhibition - II"),
-        ("DSN3099", "Engineering Project in Community Service"),
-        ("DSN4091", "Capstone Project - Phase 1"),
-        ("DSN4092", "Capstone Project - Phase 2")
-    ],
-    "University Elective - Natural Science Electives": [
-        ("CHY2007", "Modelling and Simulation of Biological Systems"),
-        ("MAT2003", "Applied Numerical Method"),
-        ("MAT2004", "Operations Research"),
-        ("MAT2005", "Transform Techniques and Difference Equations"),
-        ("MAT3004", "Random Process"),
-        ("MAT3008", "Computational Game Theory"),
-        ("PHY2011", "Biophysics")
-    ],
-    "University Elective - Multidisciplinary Electives": [
-        ("BIO1501", "Bio Inspired Design"),
-        ("CDS3005", "Foundations of Data Science"),
-        ("CSG2003", "Human Computer Interaction"),
-        ("EAC4012", "Body Area Networks"),
-        ("ECE4006", "Sensors And Iot"),
-        ("ENG3001", "Introduction to Computational Linguistics"),
-        ("MEA3015", "UNMANNED AERIAL VEHICLES")
-    ],
-    "University Elective - Humanities, Social Sciences and Management Electives": [
-        ("BMT1013", "Human Resource Management"),
-        ("BMT2017", "International Business"),
-        ("HUM1002", "Emotional Intelligence"),
-        ("HUM2001", "Behavioural Science"),
-        ("MGT1002", "PRINCIPLES OF MANAGEMENT AND ORGANIZATIONAL BEHAVIOUR"),
-        ("MGT2003", "Technology Entrepreneurship")
-    ],
-    "University Elective - Open Electives": [
-        ("CSD1001", "Principles Of Digital Forensics"),
-        ("CSD3010", "Cyber Physical Systems"),
-        ("CSD4002", "Ethical Hacking"),
-        ("ONL1010", "Applied Machine Learning in Python"),
-        ("ONL1021", "HTML, CSS and JavaScript for Web Developers"),
-        ("ONL1022", "Industrial IoT Markets and Security"),
-        ("ONL1023", "Introduction to Self-Driving Cars"),
-        ("ONL1028", "The Bits and Bytes of Computer Networking"),
-        ("ONL1032", "IBM AI Engineering Professional Certificate")
-    ],
-    "Non - Graded Mandatory Courses": [
-        ("CSE0001", "Digital Literacy"),
-        ("CSE0002", "OPEN SOURCE SOFTWARE (LINUX ADMINISTRATION)"),
-        ("EXC0001", "EXTRA CURRICULAR ACTIVITIES"),
-        ("HUM0002", "Swachh Bharat"),
-        ("HUM0003", "INDIAN CONSTITUTION"),
-        ("HUM0004", "INDIAN HERITAGE"),
-        ("UHV0001", "Universal Human Values - I"),
-        ("UHV0002", "Universal Human Values - II")
-    ]
+    "Programme Core": {
+        "Cloud Computing": [
+            ("CCA2001", "Cloud Computing and Virtualization"),
+            ("CCA2002", "Cloud Architecture and Services"),
+            ("CCA2006", "Cloud Automation Tools and Applications"),
+            ("CCA3001", "Cloud Data Management"),
+            ("CCA3002", "Fog and Edge Computing"),
+            ("CCA3006", "Cloud Security Management"),
+            ("CCA3007", "High Performance Computing")
+        ],
+        "Computer Science": [
+            ("CSD3009", "DATA STRUCTURES AND ANALYSIS OF ALGORITHMS"),
+            ("CSE2001", "Object Oriented Programming with C++"),
+            ("CSE2003", "Computer Architecture and Organization"),
+            ("CSE2004", "Theory Of Computation And Compiler Design"),
+            ("CSE3001", "Database Management Systems"),
+            ("CSE3003", "Operating System"),
+            ("CSE3006", "Computer Networks")
+        ],
+        "Electronics": [
+            ("ECE2002", "Digital Logic Design")
+        ]
+    },
+    "Programme Elective": {
+        "Cloud & Infrastructure": [
+            ("CCA2016", "Introduction to Cloud Services"),
+            ("CCA3010", "Containerization and Micro Services"),
+            ("CCA3011", "Internet of Things"),
+            ("CCA3012", "Parallel and Distributed Algorithms"),
+            ("CCA3013", "Cloud Orchestration Services"),
+            ("CCA3016", "Cloud Storage Infrastructures"),
+            ("CCA3017", "Cloud Strategy Planning and Management"),
+            ("CCA4001", "Application Development using Microservices and Serverless Computing"),
+            ("CCA4002", "Sensor-Cloud for Internet of Things"),
+            ("CCA4003", "Container Orchestration and Infrastructure Automation"),
+            ("CCA4004", "Cloud Performance Tuning"),
+            ("CCA4005", "Cloud Application Development")
+        ],
+        "Advanced Computing": [
+            ("CSE3007", "Artificial Intelligence"),
+            ("CSE3015", "AWS Cloud Practitioner"),
+            ("CSE3016", "AWS Solution Architect"),
+            ("CSE3017", "Salesforce"),
+            ("CSE4003", "Bigdata Analytics")
+        ]
+    },
+    "University Core - Natural Science Core": {
+        "Sciences & Math": [
+            ("CHY1005", "Introduction to Computational chemistry"),
+            ("MAT1003", "Calculus"),
+            ("MAT2002", "Discrete Mathematics and Graph Theory"),
+            ("MAT3002", "Applied Linear Algebra"),
+            ("MAT3003", "Probability, Statistics and Reliability"),
+            ("PHY1003", "Introduction to Computational Physics")
+        ]
+    },
+    "University Core - Basic Engineering Sciences Core": {
+        "Engineering": [
+            ("CSA2001", "Fundamentals in AI and ML"),
+            ("EEE1001", "Electric Circuits and Systems"),
+            ("MEE2014", "Engineering Design and Modelling")
+        ]
+    },
+    "University Core - Skill Development Courses": {
+        "Skills": [
+            ("CSE1021", "Introduction to Problem Solving and Programming"),
+            ("CSE2006", "Programming in Java"),
+            ("PLA1004", "Competitive Coding Practices"),
+            ("PLA1006", "Lateral Thinking"),
+            ("SST1003", "Professional Communication Skills for Engineers"),
+            ("SST2003", "Dynamics of workplace communication Skills")
+        ]
+    },
+    "University Core - Humanities Social Science and Management Core": {
+        "Humanities": [
+            ("CHY1006", "Environmental Sustainability"),
+            ("ENG1004", "EFFECTIVE TECHNICAL COMMUNICATION"),
+            ("ENG2005", "Advanced Technical Communication")
+        ]
+    },
+    "University Core - Project and Internships": {
+        "Projects": [
+            ("DSN2092", "SUMMER INDUSTRIAL INTERNSHIP"),
+            ("DSN2093", "SEMESTER INTERNSHIP"),
+            ("DSN2098", "Project Exhibition - I"),
+            ("DSN2099", "Project Exhibition - II"),
+            ("DSN3099", "Engineering Project in Community Service"),
+            ("DSN4091", "Capstone Project - Phase 1"),
+            ("DSN4092", "Capstone Project - Phase 2")
+        ]
+    },
+    "University Elective - Natural Science Electives": {
+        "Electives": [
+            ("CHY2007", "Modelling and Simulation of Biological Systems"),
+            ("MAT2003", "Applied Numerical Method"),
+            ("MAT2004", "Operations Research"),
+            ("MAT2005", "Transform Techniques and Difference Equations"),
+            ("MAT3004", "Random Process"),
+            ("MAT3008", "Computational Game Theory"),
+            ("PHY2011", "Biophysics")
+        ]
+    },
+    "University Elective - Multidisciplinary Electives": {
+        "Multidisciplinary": [
+            ("BIO1501", "Bio Inspired Design"),
+            ("CDS3005", "Foundations of Data Science"),
+            ("CSG2003", "Human Computer Interaction"),
+            ("EAC4012", "Body Area Networks"),
+            ("ECE4006", "Sensors And Iot"),
+            ("ENG3001", "Introduction to Computational Linguistics"),
+            ("MEA3015", "UNMANNED AERIAL VEHICLES")
+        ]
+    },
+    "University Elective - Humanities, Social Sciences and Management Electives": {
+        "Management": [
+            ("BMT1013", "Human Resource Management"),
+            ("BMT2017", "International Business"),
+            ("HUM1002", "Emotional Intelligence"),
+            ("HUM2001", "Behavioural Science"),
+            ("MGT1002", "PRINCIPLES OF MANAGEMENT AND ORGANIZATIONAL BEHAVIOUR"),
+            ("MGT2003", "Technology Entrepreneurship")
+        ]
+    },
+    "University Elective - Open Electives": {
+        "Open": [
+            ("CSD1001", "Principles Of Digital Forensics"),
+            ("CSD3010", "Cyber Physical Systems"),
+            ("CSD4002", "Ethical Hacking"),
+            ("ONL1010", "Applied Machine Learning in Python"),
+            ("ONL1021", "HTML, CSS and JavaScript for Web Developers"),
+            ("ONL1022", "Industrial IoT Markets and Security"),
+            ("ONL1023", "Introduction to Self-Driving Cars"),
+            ("ONL1028", "The Bits and Bytes of Computer Networking"),
+            ("ONL1032", "IBM AI Engineering Professional Certificate")
+        ]
+    },
+    "Non - Graded Mandatory Courses": {
+        "Mandatory": [
+            ("CSE0001", "Digital Literacy"),
+            ("CSE0002", "OPEN SOURCE SOFTWARE (LINUX ADMINISTRATION)"),
+            ("EXC0001", "EXTRA CURRICULAR ACTIVITIES"),
+            ("HUM0002", "Swachh Bharat"),
+            ("HUM0003", "INDIAN CONSTITUTION"),
+            ("HUM0004", "INDIAN HERITAGE"),
+            ("UHV0001", "Universal Human Values - I"),
+            ("UHV0002", "Universal Human Values - II")
+        ]
+    }
 }
 
 
@@ -742,9 +772,13 @@ def create_note():
             url_for("dashboard")
         )
 
+    # Flatten categories into a list of strings for programs dropdown compatibility
+    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
+
     return render_template(
         "create_note.html",
-        programs=VIT_CURRICULUM_DATA
+        programs=flattened_programs,
+        curricula=VIT_CURRICULUM_DATA
     )
 
 
@@ -760,7 +794,8 @@ def create_note():
 def upload_note():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
-        subject = request.form.get("subject", "").strip()
+        subject = request.form.get("subject", "").strip() or request.form.get("subject_text", "").strip()
+        program = request.form.get("program", "").strip()
         tags = request.form.get("tags", "").strip()
         content = request.form.get("content", "").strip()
         is_public = 1 if request.form.get("is_public") else 0
@@ -841,7 +876,7 @@ def upload_note():
                 session["user_id"],
                 title,
                 subject,
-                subject.split(" - ")[0],
+                program,
                 content,
                 tags,
                 is_public,
@@ -857,9 +892,14 @@ def upload_note():
         flash("Your note has been uploaded successfully to Supabase cloud storage!", "success")
         return redirect(url_for("dashboard"))
 
+    # Flatten categories into a list of strings for programs dropdown compatibility
+    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
+
     return render_template(
         "upload_note.html",
-        programs=VIT_CURRICULUM_DATA
+        programs=flattened_programs,
+        curricula=VIT_CURRICULUM_DATA,
+        max_mb=20
     )
 
 
@@ -1029,10 +1069,12 @@ def edit_note(note_id):
     cur.close()
     conn.close()
 
+    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
+
     return render_template(
         "edit_note.html",
         note=note,
-        programs=VIT_CURRICULUM_DATA
+        programs=flattened_programs
     )
 
 
@@ -1182,11 +1224,13 @@ def search():
     cur.close()
     conn.close()
 
+    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
+
     return render_template(
         "public_notes.html",
         notes=notes,
         query=query,
-        programs=VIT_CURRICULUM_DATA
+        programs=flattened_programs
     )
 
 
@@ -1229,11 +1273,13 @@ def vault():
     cur.close()
     conn.close()
 
+    flattened_programs = {section: [name for cat_list in subdict.values() for _, name in cat_list] for section, subdict in VIT_CURRICULUM_DATA.items()}
+
     return render_template(
         "public_notes.html",
         notes=notes,
         query="",
-        programs=VIT_CURRICULUM_DATA,
+        programs=flattened_programs,
         selected_program=selected_program,
         selected_subject=selected_subject
     )
