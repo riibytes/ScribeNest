@@ -1,119 +1,131 @@
-# =========================================================
-# UPLOAD PDF / IMAGE (SUPABASE CLOUD STORAGE INTEGRATED)
-# =========================================================
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Note // ScribeNest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .field-select {
+            width: 100%; padding: 14px; margin-bottom: 22px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.25);
+            color: white; outline: none;
+        }
+        [hidden] { display: none !important; }
+        .field-select:disabled { opacity: .55; cursor: not-allowed; }
+        .field-select option { color: #0f172a; }
+        .field-file { width: 100%; margin-bottom: 8px; color: #cbd5e1; }
+        .field-hint { font-size: .8rem; color: #94a3b8; margin-bottom: 22px; }
+        .flash { padding: 12px 16px; border-radius: 8px; margin-bottom: 18px; font-size: .9rem; }
+        .flash.error { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.5); color: #fecaca; }
+        .flash.success { background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.5); color: #bbf7d0; }
+    </style>
+</head>
+<body>
 
-@app.route(
-    "/notes/upload",
-    methods=["GET", "POST"]
-)
-@login_required
-def upload_note():
-    if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        subject = request.form.get("subject", "").strip()
-        tags = request.form.get("tags", "").strip()
-        content = request.form.get("content", "").strip()
-        is_public = 1 if request.form.get("is_public") else 0
-        uploaded_file = request.files.get("file")
+<nav class="dashboard-nav">
+    <div class="logo">SCRIBENEST</div>
+    <a href="{{ url_for('dashboard') }}">← Dashboard</a>
+</nav>
 
-        if not title or not subject:
-            flash("Title and subject are required.", "error")
-            return redirect(url_for("upload_note"))
+<main class="editor">
 
-        if not uploaded_file or not uploaded_file.filename:
-            flash("Please select a file.", "error")
-            return redirect(url_for("upload_note"))
+    <p class="eyebrow">SCRIBENEST // UPLOAD NOTE</p>
+    <h1>Upload a Note</h1>
 
-        original_filename = uploaded_file.filename
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
 
-        if "." not in original_filename:
-            flash("Invalid file.", "error")
-            return redirect(url_for("upload_note"))
+    <form method="POST" enctype="multipart/form-data">
 
-        extension = original_filename.rsplit(".", 1)[1].lower()
+        <label>Topic name</label>
+        <input type="text" name="title" placeholder="e.g. Process Scheduling" required>
 
-        if extension in ALLOWED_PDF_EXTENSIONS:
-            file_type = "pdf"
-        elif extension in ALLOWED_IMAGE_EXTENSIONS:
-            file_type = "image"
-        elif extension in ALLOWED_DOC_EXTENSIONS:
-            file_type = "document"
-        else:
-            flash("Only PDF, Images, Word, and PowerPoint files are allowed.", "error")
-            return redirect(url_for("upload_note"))
+        <label>Tags</label>
+        <input type="text" name="tags" placeholder="os, scheduling, fcfs (separate with commas)">
 
-        safe_filename = secure_filename(original_filename)
-        if not safe_filename:
-            flash("Invalid filename.", "error")
-            return redirect(url_for("upload_note"))
+        <label>Programme</label>
+        <select name="program" id="program" class="field-select" required>
+            <option value="">Select a programme</option>
+            {% for group, names in programs.items() %}
+                <optgroup label="{{ group }}">
+                    {% for name in names %}
+                        <option value="{{ name }}">{{ name }}</option>
+                    {% endfor %}
+                </optgroup>
+            {% endfor %}
+        </select>
 
-        extension_with_dot = os.path.splitext(safe_filename)[1]
-        unique_filename = str(uuid.uuid4()) + extension_with_dot
-        storage_path = f"uploads/{unique_filename}"
+        <label>Subject</label>
+        <select name="subject" id="subject" class="field-select" required>
+            <option value="">Select a programme first</option>
+            {% for prog, categories in curricula.items() %}
+                {% for category, subjects in categories.items() %}
+                    {% for code, name in subjects %}
+                        <option value="{{ code }}" data-program="{{ prog }}" data-category="{{ category }}">{{ code }} - {{ name }}</option>
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+        </select>
+        <input type="text" name="subject_text" id="subjectText" maxlength="120"
+               placeholder="Type the subject name, e.g. Thermodynamics" hidden disabled>
 
-        if supabase is None:
-            flash("Supabase storage is not configured.", "error")
-            return redirect(url_for("upload_note"))
+        <label>File</label>
+        <input type="file" name="file" class="field-file" required
+               accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.ppt,.pptx">
+        <p class="field-hint">PDF, image, Word or PowerPoint. Maximum 20 MB.</p>
 
-        try:
-            file_bytes = uploaded_file.read()
-            supabase.storage.from_("notes-bucket").upload(
-                path=storage_path,
-                file=file_bytes,
-                file_options={"content-type": uploaded_file.content_type}
-            )
-            public_url_response = supabase.storage.from_("notes-bucket").get_public_url(storage_path)
-            database_file_path = public_url_response if isinstance(public_url_response, str) else public_url_response.get("publicUrl", storage_path)
-        except Exception as e:
-            flash(f"Cloud upload failed: {str(e)}", "error")
-            return redirect(url_for("upload_note"))
+        <label class="checkbox">
+            <input type="checkbox" name="is_public">
+            Make this note public
+        </label>
 
-        # Automatically extract category from VIT_CURRICULUM_DATA based on chosen course code
-        chosen_code = subject.split(" - ")[0]
-        mapped_category = "General"
-        for cat, sub_list in VIT_CURRICULUM_DATA.items():
-            if any(code == chosen_code for code, name in sub_list):
-                mapped_category = cat
-                break
+        <button class="primary-button" type="submit">UPLOAD NOTE</button>
 
-        db = get_db()
-        db.execute(
-            """
-            INSERT INTO notes
-            (
-                user_id,
-                title,
-                subject,
-                program,
-                content,
-                tags,
-                is_public,
-                file_name,
-                file_path,
-                file_type
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                session["user_id"],
-                title,
-                subject,
-                mapped_category,
-                content,
-                tags,
-                is_public,
-                safe_filename,
-                database_file_path,
-                file_type
-            )
-        )
-        db.commit()
-        db.close()
+    </form>
 
-        flash("Your note has been uploaded successfully to Supabase cloud storage!", "success")
-        return redirect(url_for("dashboard"))
+</main>
 
-    return render_template(
-        "upload_note.html",
-        programs=VIT_CURRICULUM_DATA
-    )
+<script>
+    // Programmes with a stored curriculum get a subject dropdown (grouped by category);
+    // every other programme gets a box to type the subject.
+    const programSelect = document.getElementById('program');
+    const subjectSelect = document.getElementById('subject');
+    const subjectText = document.getElementById('subjectText');
+    const allSubjects = [...subjectSelect.querySelectorAll('option[data-program]')].map(o => ({
+        value: o.value, text: o.textContent, program: o.dataset.program, category: o.dataset.category
+    }));
+
+    function updateSubject() {
+        const chosen = programSelect.value;
+        const list = allSubjects.filter(s => s.program === chosen);
+        const typed = chosen !== '' && list.length === 0;
+
+        subjectSelect.innerHTML = '';
+        subjectSelect.add(new Option(chosen ? 'Select a subject' : 'Select a programme first', ''));
+
+        const groups = {};
+        list.forEach(s => {
+            if (!groups[s.category]) {
+                groups[s.category] = document.createElement('optgroup');
+                groups[s.category].label = s.category;
+                subjectSelect.appendChild(groups[s.category]);
+            }
+            groups[s.category].appendChild(new Option(s.text, s.value));
+        });
+
+        subjectSelect.hidden = typed;
+        subjectSelect.disabled = typed || !chosen;
+        subjectSelect.required = !typed;
+        subjectText.hidden = !typed;
+        subjectText.disabled = !typed;
+        subjectText.required = typed;
+    }
+
+    programSelect.addEventListener('change', updateSubject);
+    updateSubject();
+</script>
+
+</body>
+</html>

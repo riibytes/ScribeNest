@@ -256,6 +256,63 @@ VIT_CURRICULUM_DATA = {
 
 
 # =========================================================
+# UNIVERSITY PROGRAMMES (shown in every "Programme" dropdown)
+# =========================================================
+
+PROGRAMMES = {
+    "B.Tech Programmes (4 Years)": [
+        "B.Tech Aerospace Engineering",
+        "B.Tech Bioengineering",
+        "B.Tech Computer Science & Engineering",
+        "B.Tech Computer Science & Engineering (Artificial Intelligence & Machine Learning)",
+        "B.Tech Computer Science & Engineering (Cyber Security & Digital Forensics)",
+        "B.Tech Computer Science & Engineering (Cloud Computing & Automation)",
+        "B.Tech Computer Science & Engineering (E-Commerce Technology)",
+        "B.Tech Computer Science & Engineering (Education Technology)",
+        "B.Tech Computer Science & Engineering (Gaming Technology)",
+        "B.Tech Computer Science & Engineering (Health Informatics)",
+        "B.Tech Electronics & Communication Engineering",
+        "B.Tech Electronics & Communication Engineering (Artificial Intelligence & Cybernetics)",
+        "B.Tech Mechanical Engineering",
+        "B.Tech Mechanical Engineering (Artificial Intelligence & Robotics)",
+    ],
+    "Architecture Programmes (5 Years)": [
+        "B.Arch",
+    ],
+    "Other UG Programmes (3 Years)": [
+        "BBA (Bachelor of Business Administration)",
+    ],
+    "Integrated PG Programmes (5 Years)": [
+        "M.Tech Artificial Intelligence",
+        "M.Tech Computer Science & Engineering (Cyber Security)",
+        "M.Tech Computer Science & Engineering (Computational and Data Science)",
+        "Integrated M.Tech. AI and Bioinformatics",
+    ],
+    "PG Programmes (2 Years)": [
+        "M.Tech Computer Science & Engineering (Cyber Security & Digital Forensics)",
+        "M.Tech Artificial Intelligence & Data Science",
+        "M.Tech VLSI Design",
+        "MBA (Master of Business Administration)",
+        "MCA (Master of Computer Applications)",
+    ],
+    "Ph.D Programmes": [
+        "Ph.D Engineering",
+        "Ph.D Sciences",
+        "Ph.D Business Studies",
+        "Ph.D Humanities",
+    ],
+}
+
+# Programmes whose subjects are known. Others get a "type the subject" box.
+# To add another branch later: PROGRAMME_CURRICULA["<programme name>"] = { category: [(code, name), ...] }
+PROGRAMME_CURRICULA = {
+    "B.Tech Computer Science & Engineering (Cloud Computing & Automation)": VIT_CURRICULUM_DATA,
+}
+
+ALL_PROGRAMMES = {name for names in PROGRAMMES.values() for name in names}
+
+
+# =========================================================
 # DATABASE
 # =========================================================
 
@@ -758,7 +815,7 @@ def create_note():
 
     return render_template(
         "create_note.html",
-        programs=VIT_CURRICULUM_DATA
+        programs=PROGRAMMES
     )
 
 
@@ -774,15 +831,40 @@ def create_note():
 def upload_note():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
-        subject = request.form.get("subject", "").strip()
-        tags = request.form.get("tags", "").strip()
-        content = request.form.get("content", "").strip()
+        tags = ", ".join(
+            t.strip() for t in request.form.get("tags", "").split(",") if t.strip()
+        )
+        program = request.form.get("program", "").strip()
         is_public = 1 if request.form.get("is_public") else 0
         uploaded_file = request.files.get("file")
 
-        if not title or not subject:
-            flash("Title and subject are required.", "error")
+        if not title:
+            flash("Please enter a topic name.", "error")
             return redirect(url_for("upload_note"))
+
+        if program not in ALL_PROGRAMMES:
+            flash("Please choose a programme from the list.", "error")
+            return redirect(url_for("upload_note"))
+
+        curriculum = PROGRAMME_CURRICULA.get(program)
+        if curriculum:
+            # Known curriculum: subject must be one of this programme's subjects
+            subjects_in_program = {
+                code: name
+                for items in curriculum.values()
+                for code, name in items
+            }
+            subject_code = request.form.get("subject", "").strip()
+            if subject_code not in subjects_in_program:
+                flash("Please choose a subject from the list.", "error")
+                return redirect(url_for("upload_note"))
+            subject = f"{subject_code} - {subjects_in_program[subject_code]}"
+        else:
+            # No curriculum stored for this programme yet: user types the subject
+            subject = request.form.get("subject_text", "").strip()[:120]
+            if not subject:
+                flash("Please enter the subject name.", "error")
+                return redirect(url_for("upload_note"))
 
         if not uploaded_file or not uploaded_file.filename:
             flash("Please select a file.", "error")
@@ -854,8 +936,8 @@ def upload_note():
                 session["user_id"],
                 title,
                 subject,
-                subject.split(" - ")[0],
-                content,
+                program,
+                "",
                 tags,
                 is_public,
                 safe_filename,
@@ -866,12 +948,13 @@ def upload_note():
         db.commit()
         db.close()
 
-        flash("Your note has been uploaded successfully to Supabase cloud storage!", "success")
+        flash("Your note has been uploaded successfully!", "success")
         return redirect(url_for("dashboard"))
 
     return render_template(
         "upload_note.html",
-        programs=VIT_CURRICULUM_DATA
+        programs=PROGRAMMES,
+        curricula=PROGRAMME_CURRICULA
     )
 
 
@@ -1036,7 +1119,7 @@ def edit_note(note_id):
     return render_template(
         "edit_note.html",
         note=note,
-        programs=VIT_CURRICULUM_DATA
+        programs=PROGRAMMES
     )
 
 
@@ -1182,7 +1265,7 @@ def search():
         "public_notes.html",
         notes=notes,
         query=query,
-        programs=VIT_CURRICULUM_DATA
+        programs=PROGRAMMES
     )
 
 
@@ -1226,7 +1309,7 @@ def vault():
         "public_notes.html",
         notes=notes,
         query="",
-        programs=VIT_CURRICULUM_DATA,
+        programs=PROGRAMMES,
         selected_program=selected_program,
         selected_subject=selected_subject
     )

@@ -51,9 +51,6 @@
   }
   .narrative-stage.active { opacity: 1; visibility: visible; }
   .initial-hero { left: 60px; top: 40%; width: 560px; max-width: 560px; }
-  .dock-left { left: 60px; transform: translateY(-50%) translateX(-28px); }
-  .dock-right { right: 60px; transform: translateY(-50%) translateX(28px); }
-  .dock-left.active, .dock-right.active { transform: translateY(-50%) translateX(0); }
   .chapter-tag { color: #38bdf8; display: block; margin-bottom: 10px; font-size: .72rem; }
   .initial-hero h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin-bottom: 16px; font-weight: 600; }
   .narrative-stage h2 { font-size: 2.2rem; line-height: 1.2; margin-bottom: 14px; font-weight: 600; }
@@ -78,7 +75,7 @@
     .viewport-overlay { padding: 25px; }
     header { align-items: center; }
     nav { gap: 12px; }
-    .initial-hero, .dock-left, .dock-right { left: 25px; right: 25px; width: auto; max-width: none; }
+    .initial-hero { left: 25px; right: 25px; width: auto; max-width: none; }
     .narrative-stage h2 { font-size: 1.8rem; }
     .shade { background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,.25)); }
     .app-portal { padding: 90px 25px; }
@@ -119,29 +116,9 @@
       <p>A centralized academic workspace for creating, organizing, sharing and intelligently interacting with your study notes.</p>
     </div>
 
-    <div class="narrative-stage dock-right">
-      <span class="mono chapter-tag">// 01 : THE LECTURE HALL</span>
-      <h2 class="serif">Classroom<br>Chaos.</h2>
-      <p>Rapidly scribbled notes, blackboard formulas and professor slide decks captured during class.</p>
-    </div>
 
-    <div class="narrative-stage dock-left">
-      <span class="mono chapter-tag">// 02 : STUDENT WORKSPACE</span>
-      <h2 class="serif">Messy Desks &amp;<br>Sticky Notes.</h2>
-      <p>Late-night study sessions filled with notebooks, diagrams, screenshots and scattered resources.</p>
-    </div>
 
-    <div class="narrative-stage dock-right">
-      <span class="mono chapter-tag">// 03 : INTELLIGENT AUTOMATION</span>
-      <h2 class="serif">Transformed to<br>Digital Knowledge.</h2>
-      <p>ScribeNest brings your notes into a searchable digital workspace and prepares them for AI-powered learning tools.</p>
-    </div>
 
-    <div class="narrative-stage dock-left">
-      <span class="mono chapter-tag">// 04 : SCRIBENEST VAULT</span>
-      <h2 class="serif">Stored.<br>Organized.<br>Intelligent.</h2>
-      <p>Build your personal academic vault, discover shared notes and use AI to turn your study material into something easier to understand.</p>
-    </div>
 
   </div>
 </div>
@@ -197,7 +174,7 @@
   }
 
   function setStage(fraction) {
-    const idx = fraction < .15 ? 0 : fraction < .38 ? 1 : fraction < .62 ? 2 : fraction < .85 ? 3 : 4;
+    const idx = fraction < .15 ? 0 : 1;   // 0 = hero text visible
     if (idx === activeStage) return;
     activeStage = idx;
     stages.forEach((el, n) => el.classList.toggle('active', n === idx));
