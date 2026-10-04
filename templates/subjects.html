@@ -129,7 +129,9 @@
 <!-- Track height scales with the number of branches (about 0.75 screen each) -->
 <div class="scroll-track" id="scrollTrack">
   <div class="stage">
-    {% for category, subjects in curriculum.items() %}
+    {% for category, entries in curriculum.items() %}
+      {# Works with {type: [(code, name)]} and with {type: {group: [(code, name)]}} #}
+      {% set subjects = (entries.values() | sum(start=[])) if entries is mapping else entries %}
       <section class="branch-card" data-title="{{ category }}">
         <span class="branch-index">Branch {{ loop.index }} of {{ curriculum|length }}</span>
         <h3>{{ category }}</h3>
