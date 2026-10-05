@@ -5,6 +5,7 @@ import io
 import psycopg2
 import psycopg2.extras
 from authlib.integrations.flask_client import OAuth
+from datetime import timedelta
 from functools import wraps
 from pypdf import PdfReader
 
@@ -57,18 +58,32 @@ except ImportError:
 load_dotenv()
 
 app = Flask(__name__)
+app.config.update(
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365),
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL")),
+)
 app.secret_key = os.getenv(
     "SECRET_KEY",
     "dev-secret-change-this"
 )
 
 # Initialize Supabase Client Safely for Serverless
-url: str = os.getenv("SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY")
-try:
-    supabase: Client = create_client(url, key) if url and key else None
-except Exception:
-    supabase = None
+url = (os.getenv("SUPABASE_URL") or "").strip().strip('"').strip("'")
+key = (os.getenv("SUPABASE_KEY") or "").strip().strip('"').strip("'")
+supabase = None
+SUPABASE_ERROR = ""
+if not url or not key:
+    missing = [n for n, v in (("SUPABASE_URL", url), ("SUPABASE_KEY", key)) if not v]
+    SUPABASE_ERROR = "Missing environment variable(s): " + ", ".join(missing)
+else:
+    try:
+        supabase = create_client(url, key)
+    except Exception as e:
+        SUPABASE_ERROR = f"{type(e).__name__}: {e}"
+if SUPABASE_ERROR:
+    print("Supabase NOT configured -", SUPABASE_ERROR)
 
 # Initialize OAuth for Google Login
 oauth = OAuth(app)
@@ -269,12 +284,6 @@ VIT_CURRICULUM_DATA = {
 # =========================================================
 # PROGRAMMES  ->  CURRICULUM TYPES  ->  SUBJECTS
 # =========================================================
-# Level 1: PROGRAMMES (list of university programmes, shown in the Programme dropdown)
-# Level 2+3: PROGRAMME_CURRICULA maps a programme to its curriculum data.
-#   VIT_CURRICULUM_DATA above is already {curriculum type: {group: [(code, name)]}},
-#   so it is reused as-is (no duplicated subject data).
-# To add another branch later:
-#   PROGRAMME_CURRICULA["<programme name>"] = { type: { group: [(code, name), ...] } }
 
 PROGRAMMES = {
     "B.Tech Programmes (4 Years)": [
@@ -376,7 +385,6 @@ def init_db():
             )
         """)
 
-        # Existing databases: add the new column if it is missing
         cur.execute("ALTER TABLE notes ADD COLUMN IF NOT EXISTS curriculum_type TEXT DEFAULT ''")
 
         conn.commit()
@@ -399,13 +407,23 @@ def login_required(function):
                 "error"
             )
             return redirect(
-                url_for("login")
+                url_for(
+                    "login",
+                    next=request.path if request.method == "GET" else None
+                )
             )
         return function(
             *args,
             **kwargs
         )
     return wrapper
+
+
+def get_safe_next():
+    target = session.pop("next_url", "") or ""
+    if target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        return target
+    return None
 
 
 # =========================================================
@@ -425,14 +443,18 @@ def home():
 
 @app.route("/subjects")
 def public_subjects():
-    return render_template("subjects.html", curriculum=VIT_CURRICULUM_DATA)
+    curriculum = {
+        ctype: [subject for group in groups.values() for subject in group]
+        for ctype, groups in VIT_CURRICULUM_DATA.items()
+    }
+    return render_template("subjects.html", curriculum=curriculum)
 
 
-@app.route("/subjects/<code>")
+@app.route("/subjects/`")
 def subject_detail(code):
     if "user_id" not in session:
         flash("Please login first to view notes and materials for this subject.", "error")
-        return redirect(url_for("login"))
+        return redirect(url_for("login", next=request.path))
     
     conn = get_db()
     cur = conn.cursor()
@@ -498,11 +520,12 @@ def google_authorized():
     cur.close()
     conn.close()
 
+    session.permanent = True
     session["user_id"] = user["id"]
     session["user_name"] = user["name"]
 
     flash("Welcome back to ScribeNest!", "success")
-    return redirect(url_for("dashboard"))
+    return redirect(get_safe_next() or url_for("dashboard"))
 
 
 # =========================================================
@@ -620,6 +643,14 @@ def register():
     methods=["GET", "POST"]
 )
 def login():
+    if request.method == "GET":
+        if request.args.get("next"):
+            session["next_url"] = request.args["next"]
+        else:
+            session.pop("next_url", None)
+        if session.get("user_id"):
+            return redirect(get_safe_next() or url_for("dashboard"))
+
     if request.method == "POST":
         email = (
             request.form["email"]
@@ -646,6 +677,7 @@ def login():
             user["password"],
             password
         ):
+            session.permanent = True
             session["user_id"] = user["id"]
             session["user_name"] = user["name"]
             flash(
@@ -653,7 +685,7 @@ def login():
                 "success"
             )
             return redirect(
-                url_for("dashboard")
+                get_safe_next() or url_for("dashboard")
             )
 
         flash(
@@ -833,7 +865,6 @@ def create_note():
             url_for("dashboard")
         )
 
-
     return render_template(
         "create_note.html",
         programs=PROGRAMMES,
@@ -870,7 +901,6 @@ def upload_note():
 
         curriculum = PROGRAMME_CURRICULA.get(program)
         if curriculum:
-            # Programme -> Curriculum Type -> Subject must all be consistent
             if curriculum_type not in curriculum:
                 flash("Please choose a curriculum type for this programme.", "error")
                 return redirect(url_for("upload_note"))
@@ -886,7 +916,6 @@ def upload_note():
                 return redirect(url_for("upload_note"))
             subject = f"{subject_code} - {subjects_in_type[subject_code]}"
         else:
-            # No curriculum stored for this programme yet: subject is typed in
             curriculum_type = ""
             subject = request.form.get("subject_text", "").strip()[:120]
             if not subject:
@@ -925,7 +954,7 @@ def upload_note():
         storage_path = f"uploads/{unique_filename}"
 
         if supabase is None:
-            flash("Supabase storage is not configured.", "error")
+            flash(f"Supabase storage is not configured. Reason: {SUPABASE_ERROR}", "error")
             return redirect(url_for("upload_note"))
 
         try:
@@ -938,7 +967,7 @@ def upload_note():
             public_url_response = supabase.storage.from_("notes-bucket").get_public_url(storage_path)
             database_file_path = public_url_response if isinstance(public_url_response, str) else public_url_response.get("publicUrl", storage_path)
         except Exception as e:
-            flash(f"Cloud upload failed: {str(e)}", "error")
+            flash(f"Supabase Upload Failed ({type(e).__name__}): {str(e)}", "error")
             return redirect(url_for("upload_note"))
 
         conn = get_db()
@@ -982,7 +1011,6 @@ def upload_note():
         flash("Your note has been uploaded successfully to Supabase cloud storage!", "success")
         return redirect(url_for("dashboard"))
 
-
     return render_template(
         "upload_note.html",
         programs=PROGRAMMES,
@@ -996,7 +1024,7 @@ def upload_note():
 # =========================================================
 
 @app.route(
-    "/notes/<int:note_id>"
+    "/notes/"
 )
 @login_required
 def view_note(note_id):
@@ -1052,7 +1080,7 @@ def view_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes/<int:note_id>/edit",
+    "/notes//edit",
     methods=["GET", "POST"]
 )
 @login_required
@@ -1157,7 +1185,6 @@ def edit_note(note_id):
     cur.close()
     conn.close()
 
-
     return render_template(
         "edit_note.html",
         note=note,
@@ -1170,7 +1197,7 @@ def edit_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes/<int:note_id>/delete",
+    "/notes//delete",
     methods=["POST"]
 )
 @login_required
@@ -1206,7 +1233,7 @@ def delete_note(note_id):
 # =========================================================
 
 @app.route(
-    "/notes/<int:note_id>/favorite",
+    "/notes//favorite",
     methods=["POST"]
 )
 @login_required
@@ -1311,7 +1338,6 @@ def search():
     cur.close()
     conn.close()
 
-
     return render_template(
         "public_notes.html",
         notes=notes,
@@ -1359,7 +1385,6 @@ def vault():
     cur.close()
     conn.close()
 
-
     return render_template(
         "public_notes.html",
         notes=notes,
@@ -1375,9 +1400,7 @@ def vault():
 # =========================================================
 
 def get_ai_client():
-    api_key = os.getenv(
-        "OPENAI_API_KEY"
-    )
+    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
     if not api_key or OpenAI is None:
         return None
     return OpenAI(
