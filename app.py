@@ -1020,10 +1020,10 @@ def upload_note():
 
 
 # =========================================================
-# VIEW NOTE (FIXED WITH )
+# VIEW NOTE
 # =========================================================
 
-@app.route("/notes/<int:note_id>")
+@app.route("/notes/")
 @login_required
 def view_note(note_id):
     conn = get_db()
@@ -1074,7 +1074,7 @@ def view_note(note_id):
 
 
 # =========================================================
-# EDIT NOTE (FIXED WITH )
+# EDIT NOTE
 # =========================================================
 
 @app.route("/notes//edit", methods=["GET", "POST"])
@@ -1188,7 +1188,7 @@ def edit_note(note_id):
 
 
 # =========================================================
-# DELETE NOTE (FIXED WITH )
+# DELETE NOTE
 # =========================================================
 
 @app.route("/notes//delete", methods=["POST"])
@@ -1221,7 +1221,7 @@ def delete_note(note_id):
 
 
 # =========================================================
-# FAVORITE NOTE (FIXED WITH )
+# FAVORITE NOTE
 # =========================================================
 
 @app.route("/notes//favorite", methods=["POST"])
@@ -1478,7 +1478,7 @@ Study material:
         elif action == "questions":
             prompt = f"""
 You are ScribeNest AI.
-Generator 10 useful exam and viva questions
+Generate 10 useful exam and viva questions
 from the following study material.
 Include a mixture of:
 - Short answer questions
