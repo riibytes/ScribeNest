@@ -441,7 +441,7 @@ def home():
 # SUBJECTS CURRICULUM & LOGIN GUARD
 # =========================================================
 
-@app.route("/subjects")
+@app.route("/subjects/<code>")
 def public_subjects():
     curriculum = {
         ctype: [subject for group in groups.values() for subject in group]
