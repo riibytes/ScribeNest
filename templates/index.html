@@ -1,206 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ScribeNest // VIT Bhopal</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: auto; }
-  body { background: #000; color: #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
-  a { text-decoration: none; }
-  .mono { font-family: 'JetBrains Mono', monospace; font-size: .75rem; letter-spacing: .15em; text-transform: uppercase; color: #94a3b8; }
-  .serif { font-family: 'Cinzel', serif; letter-spacing: -.01em; color: #fff; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  /* ---------- Scroll-driven frame sequence ---------- */
-  .scroll-stage { height: 800vh; position: relative; }
-  canvas#render-canvas {
-    position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1;
-    filter: brightness(1.14) saturate(1.05);          /* brighter picture */
-  }
-  /* light shade only where text sits, so the image stays bright */
-  .shade {
-    position: fixed; inset: 0; z-index: 2; pointer-events: none;
-    background:
-      linear-gradient(90deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.14) 36%, transparent 58%),
-      linear-gradient(to bottom, rgba(0,0,0,.3), transparent 16%);
-  }
-  .viewport-overlay { position: fixed; inset: 0; z-index: 10; padding: 40px 60px; pointer-events: none; }
+    <title>ScribeNest // VIT Bhopal</title>
 
-  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; pointer-events: auto; }
-  .brand h2 { font-size: 1.1rem; letter-spacing: .2em; font-weight: 700; color: #fff; }
-  .brand p { margin-top: 5px; }
-  nav { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-  nav a { color: #e2e8f0; font-size: .75rem; transition: color .2s, border-color .2s, background .2s; }
-  nav a:hover { color: #38bdf8; }
-  .nav-login { color: #fff !important; }
-  .nav-register { border: 1px solid rgba(56,189,248,.55); padding: 8px 16px; border-radius: 2px; background: rgba(15,23,42,.55); color: #38bdf8 !important; }
-  .nav-register:hover { background: rgba(56,189,248,.16); border-color: #38bdf8; }
-  .btn-outline { border: 1px solid rgba(255,255,255,.35); padding: 9px 18px; border-radius: 2px; background: rgba(15,23,42,.55); color: #fff !important; }
-  .btn-outline:hover { border-color: #38bdf8; color: #38bdf8 !important; }
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #222;
+        }
 
-  /* ---------- Narrative stages ---------- */
-  .narrative-stage {
-    position: absolute; top: 50%; width: 420px; pointer-events: none;
-    opacity: 0; visibility: hidden; transform: translateY(-50%) translateX(0);
-    transition: opacity .6s ease, transform .6s cubic-bezier(.16,1,.3,1), visibility .6s;
-    text-shadow: 0 2px 18px rgba(0,0,0,.7);
-  }
-  .narrative-stage.active { opacity: 1; visibility: visible; }
-  .initial-hero { left: 60px; top: 40%; width: 560px; max-width: 560px; }
-  .chapter-tag { color: #38bdf8; display: block; margin-bottom: 10px; font-size: .72rem; }
-  .initial-hero h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin-bottom: 16px; font-weight: 600; }
-  .narrative-stage h2 { font-size: 2.2rem; line-height: 1.2; margin-bottom: 14px; font-weight: 600; }
-  .narrative-stage p { font-size: .98rem; line-height: 1.65; color: #e2e8f0; font-weight: 400; }
-  .narrative-stage .mono { color: #38bdf8; }
+        .container {
+            max-width: 1100px;
+            margin: 60px auto;
+            padding: 40px;
+            text-align: center;
+        }
 
-  /* ---------- Shared vault section ---------- */
-  .app-portal { position: relative; z-index: 20; min-height: 100vh; background: #05070c; border-top: 1px solid rgba(255,255,255,.1); padding: 120px 60px; display: flex; flex-direction: column; align-items: center; }
-  .vault-label { color: #38bdf8; }
-  .vault-title { font-size: 2.6rem; margin-top: 8px; text-align: center; }
-  .vault-description { max-width: 650px; text-align: center; color: #64748b; line-height: 1.7; margin-top: 18px; }
-  .search-form { width: 100%; display: flex; justify-content: center; }
-  .search-input { width: 100%; max-width: 650px; padding: 18px 24px; border-radius: 6px; border: 1px solid #1e293b; background: rgba(15,23,42,.6); color: #fff; font-size: 1rem; outline: none; margin-top: 32px; font-family: 'JetBrains Mono', monospace; }
-  .search-input:focus { border-color: #38bdf8; box-shadow: 0 0 25px rgba(56,189,248,.2); }
-  .vault-actions { display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap; justify-content: center; }
-  .vault-button { display: inline-block; padding: 12px 22px; border: 1px solid #1e293b; background: #0f172a; color: #38bdf8; font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .08em; transition: .2s; }
-  .vault-button:hover { border-color: #38bdf8; background: rgba(56,189,248,.08); }
-  .vault-button.primary { background: #38bdf8; color: #020617; border-color: #38bdf8; }
-  .vault-button.primary:hover { background: #7dd3fc; }
+        h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
 
-  @media (max-width: 900px) {
-    .viewport-overlay { padding: 25px; }
-    header { align-items: center; }
-    nav { gap: 12px; }
-    .initial-hero { left: 25px; right: 25px; width: auto; max-width: none; }
-    .narrative-stage h2 { font-size: 1.8rem; }
-    .shade { background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,.25)); }
-    .app-portal { padding: 90px 25px; }
-  }
-  @media (max-width: 650px) {
-    .viewport-overlay { padding: 20px; }
-    header { flex-direction: column; align-items: flex-start; }
-    nav { justify-content: flex-start; }
-    nav a { font-size: .65rem; }
-    .vault-title { font-size: 2rem; }
-  }
-</style>
+        .brand {
+            color: #2563eb;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .card-container {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            width: 280px;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        .card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 22px;
+            background-color: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+
+        .btn:hover {
+            opacity: 0.85;
+        }
+
+        footer {
+            margin-top: 60px;
+            color: #777;
+            font-size: 14px;
+        }
+    </style>
 </head>
+
 <body>
 
-<canvas id="render-canvas"></canvas>
-<div class="shade"></div>
+    <div class="container">
 
-<div class="scroll-stage" id="scrollStage">
-  <div class="viewport-overlay">
+        <h1>
+            <span class="brand">ScribeNest</span>
+        </h1>
 
-    <header>
-      <div class="brand">
-        <h2 class="serif">SCRIBENEST</h2>
-        <p class="mono">VIT BHOPAL // ACADEMIC KNOWLEDGE HUB</p>
-      </div>
-      <nav class="mono">
-        <a href="{{ url_for('public_subjects') }}">SUBJECTS</a>
-        <a href="{{ url_for('login') }}" class="nav-login">LOGIN</a>
-        <a href="{{ url_for('register') }}" class="nav-register">REGISTER</a>
-        <a href="{{ url_for('vault') }}" class="btn-outline">EXPLORE VAULT</a>
-      </nav>
-    </header>
+        <div class="subtitle">
+            VIT Bhopal
+        </div>
 
-    <div class="narrative-stage initial-hero active">
-      <p class="mono chapter-tag">SCRIBENEST // YOUR ACADEMIC SPACE</p>
-      <h1 class="serif">Your Notes.<br>Smarter on<br>the Cloud.</h1>
-      <p>A centralized academic workspace for creating, organizing, sharing and intelligently interacting with your study notes.</p>
+        <div class="card-container">
+
+            <div class="card">
+                <h2>Notes</h2>
+                <p>
+                    Create, organize and access study notes
+                    in one place.
+                </p>
+
+                <a href="{{ url_for('dashboard') }}" class="btn">
+                    Explore Notes
+                </a>
+            </div>
+
+            <div class="card">
+                <h2>Vault</h2>
+                <p>
+                    Store and manage your academic documents
+                    securely.
+                </p>
+
+                <a href="{{ url_for('dashboard') }}" class="btn">
+                    Open Vault
+                </a>
+            </div>
+
+            <div class="card">
+                <h2>AI Tools</h2>
+                <p>
+                    Use AI-powered tools to make studying
+                    easier and more efficient.
+                </p>
+
+                <a href="{{ url_for('dashboard') }}" class="btn">
+                    AI Tools
+                </a>
+            </div>
+
+        </div>
+
+        <footer>
+            © 2026 ScribeNest // VIT Bhopal
+        </footer>
+
     </div>
 
-
-
-
-
-  </div>
-</div>
-
-<section class="app-portal" id="repo">
-  <p class="mono vault-label">SCRIBENEST // SHARED VAULT</p>
-  <h2 class="serif vault-title">Explore Shared Notes</h2>
-  <p class="vault-description">Discover notes shared by students, search academic topics and build a collaborative knowledge base.</p>
-  <form class="search-form" action="{{ url_for('search') }}" method="GET">
-    <input type="text" name="q" class="search-input" placeholder="Search by subject code (e.g. CSE2001), topic or keyword...">
-  </form>
-  <div class="vault-actions">
-    <a href="{{ url_for('vault') }}" class="vault-button primary">EXPLORE VAULT →</a>
-    <a href="{{ url_for('login') }}" class="vault-button">LOGIN</a>
-    <a href="{{ url_for('register') }}" class="vault-button">CREATE ACCOUNT</a>
-  </div>
-</section>
-
-<script>
-(() => {
-  const canvas = document.getElementById('render-canvas');
-  const ctx = canvas.getContext('2d', { alpha: false });
-  canvas.width = 1920; canvas.height = 1080;
-
-  const frameCount = 150;
-  const framePath = "{{ url_for('static', filename='frames/') }}";
-  const images = new Array(frameCount);
-  const loaded = new Array(frameCount).fill(false);
-  const stage = document.getElementById('scrollStage');
-  const stages = [...document.querySelectorAll('.narrative-stage')];
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
-
-  let maxScroll = 1, target = 0, current = 0, shown = -1, activeStage = -1, running = false;
-
-  /* Load frames in order so the early ones are ready first */
-  for (let i = 0; i < frameCount; i++) {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => { loaded[i] = true; if (i === 0 || i === shown) draw(i, true); };
-    img.src = framePath + 'ezgif-frame-' + String(i + 1).padStart(3, '0') + '.jpg';
-    images[i] = img;
-  }
-
-  /* Draw frame i (or the nearest earlier frame that has loaded) */
-  function draw(i, force) {
-    let k = i;
-    while (k > 0 && !loaded[k]) k--;
-    if (!loaded[k]) return;
-    if (k === shown && !force) return;
-    ctx.drawImage(images[k], 0, 0, canvas.width, canvas.height);
-    shown = k;
-  }
-
-  function setStage(fraction) {
-    const idx = fraction < .15 ? 0 : 1;   // 0 = hero text visible
-    if (idx === activeStage) return;
-    activeStage = idx;
-    stages.forEach((el, n) => el.classList.toggle('active', n === idx));
-  }
-
-  const measure = () => { maxScroll = Math.max(1, stage.offsetHeight - innerHeight); };
-  const readTarget = () => {
-    const f = clamp(scrollY / maxScroll);
-    target = f * (frameCount - 1);
-    setStage(f);
-  };
-
-  /* Ease toward the scroll position so playback glides instead of stepping */
-  function tick() {
-    const diff = target - current;
-    if (reduce || Math.abs(diff) < 0.05) { current = target; draw(Math.round(current)); running = false; return; }
-    current += diff * 0.14;
-    draw(Math.round(current));
-    requestAnimationFrame(tick);
-  }
-  function kick() { readTarget(); if (!running) { running = true; requestAnimationFrame(tick); } }
-
-  addEventListener('scroll', kick, { passive: true });
-  addEventListener('resize', () => { measure(); kick(); });
-  measure(); readTarget(); current = target;
-})();
-</script>
 </body>
 </html>
