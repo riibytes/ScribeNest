@@ -1,22 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>{{ note["title"] }} // ScribeNest</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
 
     <style>
-
         .note-actions {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
-            margin-top: 20px;
+            margin-top: 25px;
         }
 
         .note-action {
@@ -27,11 +24,6 @@
             font-weight: 500;
             cursor: pointer;
             border: 1px solid rgba(255,255,255,0.12);
-        }
-
-        .view-action {
-            background: rgba(0, 200, 255, 0.12);
-            color: #00c8ff;
         }
 
         .download-action {
@@ -88,27 +80,23 @@
             color: #cbd5e1;
         }
 
+        .document-message p {
+            margin-bottom: 15px;
+        }
     </style>
-
 </head>
-
 
 <body>
 
-<!-- NAVIGATION -->
-
 <nav class="dashboard-nav">
-
     <div class="logo">SCRIBENEST</div>
 
-    <a href="{{ url_for('dashboard') }}">← Dashboard</a>
-
+    <a href="{{ url_for('dashboard') }}">
+        ← Dashboard
+    </a>
 </nav>
 
-
 <main class="note-view">
-
-    <!-- NOTE INFORMATION -->
 
     <div class="note-meta">
         <span>{{ note["subject"] }}</span>
@@ -120,13 +108,11 @@
         {% endif %}
     </div>
 
-
     <h1>{{ note["title"] }}</h1>
 
-    <p class="author">Created by {{ note["author"] }}</p>
-
-
-    <!-- TAGS -->
+    <p class="author">
+        Created by {{ note["author"] }}
+    </p>
 
     {% if note["tags"] %}
         <div class="tags">
@@ -136,23 +122,11 @@
         </div>
     {% endif %}
 
-
-    <!-- NOTE TEXT -->
-
-    {% if note["content"] %}
-        <div class="note-content">
-            {{ note["content"] }}
-        </div>
-    {% endif %}
-
-
-    <!-- ATTACHED FILE -->
+    <div class="note-content">
+        {{ note["content"] }}
+    </div>
 
     {% if note["file_path"] %}
-
-        {# Build a download URL that forces "Save as" (works whether or not the URL already has a "?") #}
-        {% set sep = '&' if '?' in note['file_path'] else '?' %}
-        {% set download_url = note['file_path'] ~ sep ~ 'download=' ~ ((note['file_name'] or 'note') | urlencode) %}
 
         <div class="file-attachment-box">
 
@@ -160,17 +134,22 @@
                 📎 {{ note["file_name"] }}
             </div>
 
-
             {% if note["file_type"] == "image" %}
 
                 <div class="file-preview">
-                    <img src="{{ url_for('note_file', note_id=note['id']) }}" alt="{{ note['title'] }}">
+                    <img
+                        src="{{ note['file_path'] }}"
+                        alt="{{ note['title'] }}"
+                    >
                 </div>
 
             {% elif note["file_type"] == "pdf" %}
 
                 <div class="file-preview">
-                    <iframe src="{{ url_for('note_file', note_id=note['id']) }}" title="PDF Preview"></iframe>
+                    <iframe
+                        src="{{ note['file_path'] }}"
+                        title="PDF Preview">
+                    </iframe>
                 </div>
 
             {% elif note["file_type"] == "document" %}
@@ -185,54 +164,76 @@
             {% else %}
 
                 <div class="document-message">
-                    <p>This file type cannot be previewed in the browser.</p>
+                    <p>
+                        This file type cannot be previewed directly in the browser.
+                    </p>
+
+                    <a
+                        href="{{ note['file_path'] }}"
+                        class="note-action download-action"
+                        download>
+                        ⬇ Download File
+                    </a>
                 </div>
 
             {% endif %}
 
-
-            <!-- ACTION BUTTONS: view (new tab), download, edit -->
-
             <div class="note-actions">
 
-                <a href="{{ url_for('note_file', note_id=note['id']) }}"
-                   target="_blank"
-                   rel="noopener"
-                   class="note-action view-action">
-                    👁 OPEN IN NEW TAB
-                </a>
-
-                <a href="{{ download_url }}"
-                   class="note-action download-action">
-                    ⬇ DOWNLOAD
+                <a
+                    id="downloadButton"
+                    href="{{ note['file_path'] }}"
+                    class="note-action download-action">
+                    ↓ DOWNLOAD
                 </a>
 
                 {% if note["user_id"] == session["user_id"] %}
-                    <a href="{{ url_for('edit_note', note_id=note['id']) }}"
-                       class="note-action edit-action">
-                        ✏ EDIT
+
+                    <a
+                        href="{{ url_for('edit_note', note_id=note['id']) }}"
+                        class="note-action edit-action">
+                        EDIT
                     </a>
+
                 {% endif %}
 
             </div>
 
         </div>
 
-    {% else %}
+    {% endif %}
 
-        {# Text-only note: no file, so just show Edit #}
-        {% if note["user_id"] == session["user_id"] %}
-            <div class="note-actions">
-                <a href="{{ url_for('edit_note', note_id=note['id']) }}"
-                   class="note-action edit-action">
-                    ✏ EDIT
-                </a>
-            </div>
-        {% endif %}
+    {% if note["user_id"] == session["user_id"] %}
+
+        <div class="note-actions">
+            <a
+                href="{{ url_for('edit_note', note_id=note['id']) }}"
+                class="note-action edit-action">
+                EDIT NOTE
+            </a>
+        </div>
 
     {% endif %}
 
 </main>
+
+<script>
+    const downloadButton = document.getElementById("downloadButton");
+
+    if (downloadButton) {
+        downloadButton.addEventListener("click", function(event) {
+            event.preventDefault();
+
+            try {
+                const originalUrl = new URL(downloadButton.href);
+                originalUrl.searchParams.set("download", "1");
+                window.location.href = originalUrl.toString();
+            } catch (error) {
+                window.location.href = downloadButton.href;
+            }
+        });
+    }
+</script>
 
 </body>
 </html>
