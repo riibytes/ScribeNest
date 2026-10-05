@@ -441,7 +441,7 @@ def home():
 # SUBJECTS CURRICULUM & LOGIN GUARD
 # =========================================================
 
-@app.route("/subjects/<code>")
+@app.route("/subjects")
 def public_subjects():
     curriculum = {
         ctype: [subject for group in groups.values() for subject in group]
@@ -1564,4 +1564,4 @@ def file_too_large(error):
 init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5500)
+    app.run(debug=True, host="0.0.0.0", port=5500)s
