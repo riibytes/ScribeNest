@@ -1,7 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>{{ note["title"] }} // ScribeNest</title>
 
@@ -10,9 +14,97 @@
         href="{{ url_for('static', filename='style.css') }}"
     >
 
+    <style>
+
+        .note-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+
+        .note-action {
+            display: inline-block;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .view-action {
+            background: rgba(0, 200, 255, 0.12);
+            color: #00c8ff;
+        }
+
+        .download-action {
+            background: rgba(255,255,255,0.08);
+            color: white;
+        }
+
+        .edit-action {
+            background: transparent;
+            color: #00c8ff;
+        }
+
+        .file-attachment-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.10);
+        }
+
+        .file-name {
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        .file-preview {
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        .file-preview iframe {
+            width: 100%;
+            height: 650px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            background: #111;
+        }
+
+        .file-preview img {
+            display: block;
+            max-width: 100%;
+            max-height: 750px;
+            margin: auto;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .document-message {
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            text-align: center;
+            color: #cbd5e1;
+        }
+
+        .document-message p {
+            margin-bottom: 15px;
+        }
+
+    </style>
+
 </head>
 
+
 <body>
+
+
+<!-- NAVIGATION -->
 
 <nav class="dashboard-nav">
 
@@ -29,6 +121,9 @@
 
 <main class="note-view">
 
+
+    <!-- NOTE INFORMATION -->
+
     <div class="note-meta">
 
         <span>
@@ -36,27 +131,37 @@
         </span>
 
         {% if note["is_public"] %}
+
             <span>
                 PUBLIC
             </span>
+
         {% else %}
+
             <span>
                 PRIVATE
             </span>
+
         {% endif %}
 
     </div>
 
+
+    <!-- NOTE TITLE -->
 
     <h1>
         {{ note["title"] }}
     </h1>
 
 
+    <!-- AUTHOR -->
+
     <p class="author">
         Created by {{ note["author"] }}
     </p>
 
+
+    <!-- TAGS -->
 
     {% if note["tags"] %}
 
@@ -75,6 +180,8 @@
     {% endif %}
 
 
+    <!-- NOTE TEXT -->
+
     <div class="note-content">
 
         {{ note["content"] }}
@@ -82,99 +189,207 @@
     </div>
 
 
-   <!-- ATTACHED FILE PREVIEW / DOWNLOAD SECTION (SUPABASE & OFFICE VIEWER INTEGRATED) -->
+
+    <!-- ATTACHED FILE -->
+
     {% if note["file_path"] %}
-        <div class="file-attachment-box" style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-            
-            <p style="margin-bottom: 10px; font-weight: bold; color: #cbd5e1;">
-                📎 Attached File: {{ note["file_name"] }}
-            </p>
+
+        <div class="file-attachment-box">
+
+            <div class="file-name">
+
+                📎 {{ note["file_name"] }}
+
+            </div>
+
+
+            <!-- ========================= -->
+            <!-- IMAGE PREVIEW              -->
+            <!-- ========================= -->
 
             {% if note["file_type"] == "image" %}
-                <div style="margin-top: 15px;">
-                    <img 
-                        src="{{ note['file_path'] }}" 
-                        alt="{{ note['title'] }}" 
-                        style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);"
-                    >
-                </div>
-            {% elif note["file_type"] == "pdf" %}
-                <div style="margin-top: 15px;">
-                    <iframe 
-                        src="{{ note['file_path'] }}" 
-                        width="100%" 
-                        height="600px" 
-                        style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 15px;"
-                    ></iframe>
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <a 
-                            href="{{ note['file_path'] }}" 
-                            target="_blank" 
-                            class="primary-button" 
-                            style="text-decoration: none; padding: 10px 20px; background: #3b82f6; color: white; border-radius: 8px; display: inline-block;"
-                        >
-                            📄 Open in New Tab
-                        </a>
-                        <a 
-                            href="{{ note['file_path'] }}" 
-                            download 
-                            style="text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border-radius: 8px; display: inline-block;"
-                        >
-                            ⬇️ Download PDF
-                        </a>
-                    </div>
-                </div>
-            {% elif note["file_type"] == "document" %}
-                <div style="margin-top: 15px;">
-                    <!-- Embed Microsoft Office Online Viewer for PPTX/DOCX -->
-                    <iframe 
-                        src="https://view.officeapps.live.com/op/embed.aspx?src={{ note['file_path'] }}" 
-                        width="100%" 
-                        height="600px" 
-                        style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 15px;"
-                    ></iframe>
 
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <a 
-                            href="{{ note['file_path'] }}" 
-                            target="_blank" 
-                            class="primary-button"
-                            style="text-decoration: none; padding: 10px 20px; background: #3b82f6; color: white; border-radius: 8px; display: inline-block;"
-                        >
-                            📄 Open in New Tab
-                        </a>
-                        <a 
-                            href="{{ note['file_path'] }}" 
-                            download 
-                            style="text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border-radius: 8px; display: inline-block;"
-                        >
-                            ⬇️ Download Document
-                        </a>
-                    </div>
+                <div class="file-preview">
+
+                    <img
+                        src="{{ note['file_path'] }}"
+                        alt="{{ note['title'] }}"
+                    >
+
                 </div>
+
+
+            <!-- ========================= -->
+            <!-- PDF PREVIEW                -->
+            <!-- ========================= -->
+
+            {% elif note["file_type"] == "pdf" %}
+
+                <div class="file-preview">
+
+                    <iframe
+                        src="{{ note['file_path'] }}"
+                        title="PDF Preview"
+                    >
+                    </iframe>
+
+                </div>
+
+
+            <!-- ========================= -->
+            <!-- DOCX / PPTX PREVIEW        -->
+            <!-- ========================= -->
+
+            {% elif note["file_type"] == "document" %}
+
+                <div class="file-preview">
+
+                    <iframe
+                        src="https://view.officeapps.live.com/op/embed.aspx?src={{ note['file_path'] | urlencode }}"
+                        title="Document Preview"
+                    >
+                    </iframe>
+
+                </div>
+
+
+            <!-- ========================= -->
+            <!-- UNKNOWN FILE TYPE           -->
+            <!-- ========================= -->
+
+            {% else %}
+
+                <div class="document-message">
+
+                    <p>
+                        This file type cannot be previewed directly in the browser.
+                    </p>
+
+                    <a
+                        href="{{ note['file_path'] }}"
+                        class="note-action download-action"
+                        download
+                    >
+                        ⬇ Download File
+                    </a>
+
+                </div>
+
             {% endif %}
 
+
+
+            <!-- ========================= -->
+            <!-- ACTION BUTTONS              -->
+            <!-- ========================= -->
+
+            <div class="note-actions">
+
+
+                <!-- DOWNLOAD -->
+
+                <a
+                    id="downloadButton"
+                    href="{{ note['file_path'] }}"
+                    class="note-action download-action"
+                >
+                    ↓ DOWNLOAD
+                </a>
+
+
+                <!-- EDIT -->
+
+                {% if note["user_id"] == session["user_id"] %}
+
+                    <a
+                        href="{{ url_for(
+                            'edit_note',
+                            note_id=note['id']
+                        ) }}"
+                        class="note-action edit-action"
+                    >
+                        EDIT
+                    </a>
+
+                {% endif %}
+
+            </div>
+
         </div>
+
     {% endif %}
 
 
+
+    <!-- NOTE ACTIONS -->
+
     {% if note["user_id"] == session["user_id"] %}
 
-        <div style="margin-top: 30px;">
+        <div class="note-actions">
+
             <a
-                class="primary-button"
                 href="{{ url_for(
                     'edit_note',
                     note_id=note['id']
                 ) }}"
+                class="note-action edit-action"
             >
                 EDIT NOTE
             </a>
+
         </div>
 
     {% endif %}
 
+
 </main>
 
+
+
+<!-- DOWNLOAD HANDLER -->
+
+<script>
+
+    const downloadButton = document.getElementById("downloadButton");
+
+    if (downloadButton) {
+
+        downloadButton.addEventListener("click", function(event) {
+
+            event.preventDefault();
+
+            try {
+
+                const originalUrl = new URL(
+                    downloadButton.href
+                );
+
+                /*
+                 * Supabase uses the "download" query parameter
+                 * to tell Storage to return the file as a download.
+                 */
+
+                originalUrl.searchParams.set("download", "1");
+
+                window.location.href = originalUrl.toString();
+
+            } catch (error) {
+
+                /*
+                 * Fallback if the URL cannot be modified.
+                 */
+
+                window.location.href = downloadButton.href;
+
+            }
+
+        });
+
+    }
+
+</script>
+
+
 </body>
+
 </html>
