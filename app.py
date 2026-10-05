@@ -1023,9 +1023,7 @@ def upload_note():
 # VIEW NOTE
 # =========================================================
 
-@app.route(
-    "/notes/"
-)
+@app.route("/notes/")
 @login_required
 def view_note(note_id):
     conn = get_db()
@@ -1079,10 +1077,7 @@ def view_note(note_id):
 # EDIT NOTE
 # =========================================================
 
-@app.route(
-    "/notes//edit",
-    methods=["GET", "POST"]
-)
+@app.route("/notes//edit", methods=["GET", "POST"])
 @login_required
 def edit_note(note_id):
     conn = get_db()
@@ -1196,10 +1191,7 @@ def edit_note(note_id):
 # DELETE NOTE
 # =========================================================
 
-@app.route(
-    "/notes//delete",
-    methods=["POST"]
-)
+@app.route("/notes//delete", methods=["POST"])
 @login_required
 def delete_note(note_id):
     conn = get_db()
@@ -1232,10 +1224,7 @@ def delete_note(note_id):
 # FAVORITE NOTE
 # =========================================================
 
-@app.route(
-    "/notes//favorite",
-    methods=["POST"]
-)
+@app.route("/notes//favorite", methods=["POST"])
 @login_required
 def favorite_note(note_id):
     conn = get_db()
