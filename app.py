@@ -1023,7 +1023,7 @@ def upload_note():
 # VIEW NOTE (FIXED WITH )
 # =========================================================
 
-@app.route("/notes/")
+@app.route("/notes/<int:note_id>")
 @login_required
 def view_note(note_id):
     conn = get_db()
