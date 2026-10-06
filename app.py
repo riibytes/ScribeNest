@@ -446,7 +446,6 @@ def home():
 # =========================================================
 
 @app.route("/subjects")
-@login_required
 def public_subjects():
     curriculum = {
         ctype: [subject for group in groups.values() for subject in group]
@@ -1463,7 +1462,12 @@ def get_ai_client():
 
 def ask_ai(prompt, images=None):
     """images = list of (mime_type, base64_string); sent to the vision-capable model."""
-    client = get_ai_client()
+    try:
+        client = get_ai_client()
+    except Exception as error:
+        return (
+            f"AI client could not start ({type(error).__name__}): {error}"
+        )
     if client is None:
         return (
             "AI is not configured yet. "
@@ -1540,133 +1544,140 @@ def ai_tools():
     result = None
 
     if request.method == "POST":
-        pasted = request.form.get("content", "").strip()
-        action = request.form.get("action")
-        note_id = request.form.get("note_id", "").strip()
+        try:
+            pasted = request.form.get("content", "").strip()
+            action = request.form.get("action")
+            note_id = request.form.get("note_id", "").strip()
 
-        texts = [pasted] if pasted else []
-        images = []
-        notices = []
+            texts = [pasted] if pasted else []
+            images = []
+            notices = []
 
-        # 1) A saved note chosen from the dropdown (its text + attached PDF/image)
-        if note_id.isdigit():
-            conn = get_db()
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT * FROM notes WHERE id = %s AND (user_id = %s OR is_public = 1)",
-                (int(note_id), session["user_id"])
-            )
-            note = cur.fetchone()
-            cur.close()
-            conn.close()
+            # 1) A saved note chosen from the dropdown (its text + attached PDF/image)
+            if note_id.isdigit():
+                conn = get_db()
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT * FROM notes WHERE id = %s AND (user_id = %s OR is_public = 1)",
+                    (int(note_id), session["user_id"])
+                )
+                note = cur.fetchone()
+                cur.close()
+                conn.close()
 
-            if note:
-                if note["content"]:
-                    texts.append(note["content"])
+                if note:
+                    if note["content"]:
+                        texts.append(note["content"])
 
-                if note["file_path"]:
-                    try:
-                        res = requests.get(note["file_path"], timeout=20)
-                        if res.status_code == 200:
-                            if note["file_type"] == "pdf":
-                                pdf_text = extract_text_from_pdf(res.content)
-                                if pdf_text.strip():
-                                    texts.append(f"--- {note['file_name']} ---\n{pdf_text}")
+                    if note["file_path"]:
+                        try:
+                            res = requests.get(note["file_path"], timeout=20)
+                            if res.status_code == 200:
+                                if note["file_type"] == "pdf":
+                                    pdf_text = extract_text_from_pdf(res.content)
+                                    if pdf_text.strip():
+                                        texts.append(f"--- {note['file_name']} ---\n{pdf_text}")
+                                    else:
+                                        notices.append(f"{note['file_name']}: no readable text found in this PDF.")
+                                elif note["file_type"] == "image":
+                                    mime = mimetypes.guess_type(note["file_name"] or "")[0] or "image/jpeg"
+                                    images.append((mime, base64.b64encode(res.content).decode("ascii")))
                                 else:
-                                    notices.append(f"{note['file_name']}: no readable text found in this PDF.")
-                            elif note["file_type"] == "image":
-                                mime = mimetypes.guess_type(note["file_name"] or "")[0] or "image/jpeg"
-                                images.append((mime, base64.b64encode(res.content).decode("ascii")))
+                                    notices.append("Word/PowerPoint attachments can't be read by AI yet.")
                             else:
-                                notices.append("Word/PowerPoint attachments can't be read by AI yet.")
-                        else:
-                            notices.append("Could not download the attached file for that note.")
-                    except Exception:
-                        notices.append("Could not read the attached file for that note.")
+                                notices.append("Could not download the attached file for that note.")
+                        except Exception:
+                            notices.append("Could not read the attached file for that note.")
 
-        # 2) Files uploaded straight into the AI page
-        up_texts, up_images, up_notices = collect_ai_material(request.files.getlist("files"))
-        texts += up_texts
-        images += up_images[:max(0, AI_MAX_IMAGES - len(images))]
-        notices += up_notices
+            # 2) Files uploaded straight into the AI page
+            up_texts, up_images, up_notices = collect_ai_material(request.files.getlist("files"))
+            texts += up_texts
+            images += up_images[:max(0, AI_MAX_IMAGES - len(images))]
+            notices += up_notices
 
-        content = "\n\n".join(texts)[:AI_MAX_CHARS]
+            content = "\n\n".join(texts)[:AI_MAX_CHARS]
 
-        for message in notices:
-            flash(message, "error")
+            for message in notices:
+                flash(message, "error")
 
-        if not content and not images:
-            flash(
-                "Please paste some text, upload a PDF/image, or choose a saved note.",
-                "error"
+            if not content and not images:
+                flash(
+                    "Please paste some text, upload a PDF/image, or choose a saved note.",
+                    "error"
+                )
+                return redirect(
+                    url_for("ai_tools")
+                )
+
+            material = content or "(The study material is in the attached image(s).)"
+            image_hint = (
+                "\nThe material may also include attached images of notes - read them too.\n"
+                if images else ""
             )
-            return redirect(
-                url_for("ai_tools")
+
+            if action == "summary":
+                prompt = f"""
+    You are ScribeNest AI.
+    Summarize the following student study material.
+    Give:
+    1. Short summary
+    2. Important concepts
+    3. Key points
+    4. Exam-focused points
+    {image_hint}
+    Study material:
+    {material}
+    """
+            elif action == "questions":
+                prompt = f"""
+    You are ScribeNest AI.
+    Generate 10 useful exam and viva questions
+    from the following study material.
+    Include a mixture of:
+    - Short answer questions
+    - Conceptual questions
+    - Difference questions
+    - Application questions
+    {image_hint}
+    Study material:
+    {material}
+    """
+            elif action == "flashcards":
+                prompt = f"""
+    You are ScribeNest AI.
+    Create 10 study flashcards from the
+    following material.
+    Format:
+    Q:
+    A:
+    {image_hint}
+    Study material:
+    {material}
+    """
+            elif action == "ask":
+                question = request.form.get("question", "").strip()
+                prompt = f"""
+    You are ScribeNest AI.
+    Answer the student's question using
+    ONLY the provided study material as
+    the main source.
+    {image_hint}
+    Study material:
+    {material}
+
+    Student question:
+    {question}
+    """
+            else:
+                prompt = material
+
+            result = ask_ai(prompt, images)
+        except Exception as e:
+            app.logger.exception("AI request failed")
+            result = (
+                f"Something went wrong while processing your request "
+                f"({type(e).__name__}): {e}"
             )
-
-        material = content or "(The study material is in the attached image(s).)"
-        image_hint = (
-            "\nThe material may also include attached images of notes - read them too.\n"
-            if images else ""
-        )
-
-        if action == "summary":
-            prompt = f"""
-You are ScribeNest AI.
-Summarize the following student study material.
-Give:
-1. Short summary
-2. Important concepts
-3. Key points
-4. Exam-focused points
-{image_hint}
-Study material:
-{material}
-"""
-        elif action == "questions":
-            prompt = f"""
-You are ScribeNest AI.
-Generate 10 useful exam and viva questions
-from the following study material.
-Include a mixture of:
-- Short answer questions
-- Conceptual questions
-- Difference questions
-- Application questions
-{image_hint}
-Study material:
-{material}
-"""
-        elif action == "flashcards":
-            prompt = f"""
-You are ScribeNest AI.
-Create 10 study flashcards from the
-following material.
-Format:
-Q:
-A:
-{image_hint}
-Study material:
-{material}
-"""
-        elif action == "ask":
-            question = request.form.get("question", "").strip()
-            prompt = f"""
-You are ScribeNest AI.
-Answer the student's question using
-ONLY the provided study material as
-the main source.
-{image_hint}
-Study material:
-{material}
-
-Student question:
-{question}
-"""
-        else:
-            prompt = material
-
-        result = ask_ai(prompt, images)
 
     conn = get_db()
     cur = conn.cursor()
