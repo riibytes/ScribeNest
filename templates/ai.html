@@ -9,6 +9,58 @@
         href="{{ url_for('static', filename='style.css') }}"
     >
 
+    <style>
+
+        .ai-field {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 14px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.25);
+            color: white;
+            outline: none;
+            font-family: inherit;
+            font-size: 15px;
+        }
+
+        .ai-field:focus {
+            border-color: #8b5cf6;
+        }
+
+        .ai-field option {
+            color: #0f172a;
+            background: white;
+        }
+
+        .ai-hint {
+            font-size: 0.82rem;
+            color: #94a3b8;
+            margin: 0 0 22px;
+        }
+
+        .ai-upload-box {
+            padding: 22px;
+            border: 1px dashed rgba(255, 255, 255, 0.25);
+            border-radius: 14px;
+            margin-bottom: 22px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .ai-upload-box input[type="file"] {
+            width: 100%;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+
+        .result-text {
+            white-space: pre-wrap;
+            line-height: 1.7;
+        }
+
+    </style>
+
 </head>
 
 <body>
@@ -46,9 +98,9 @@
 
     <p class="ai-description">
 
-        Paste your study material below and let
-        ScribeNest AI help you summarize, revise
-        and understand it.
+        Paste your notes, upload PDFs or photos of your notes,
+        or pick one of your saved notes. ScribeNest AI can then
+        summarize it, generate questions and make flashcards.
 
     </p>
 
@@ -68,17 +120,64 @@
     {% endwith %}
 
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
 
-        <label>
-            Study Material
+        <!-- 1) SAVED NOTE -->
+
+        <label for="note_id">
+            Use one of your saved notes (optional)
+        </label>
+
+        <select name="note_id" id="note_id" class="ai-field">
+            <option value="">-- None --</option>
+            {% for n in notes %}
+                <option value="{{ n['id'] }}">
+                    {{ n['title'] }} ({{ n['subject'] }})
+                </option>
+            {% endfor %}
+        </select>
+
+        <p class="ai-hint">
+            Includes the note's text and its attached PDF or image.
+        </p>
+
+
+        <!-- 2) FILE UPLOAD -->
+
+        <div class="ai-upload-box">
+
+            <label for="files">
+                Upload PDFs or images (optional)
+            </label>
+
+            <input
+                type="file"
+                id="files"
+                name="files"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt"
+            >
+
+            <p class="ai-hint" style="margin-bottom: 0;">
+                PDF, PNG, JPG, WEBP or TXT. Up to 4 images per request.
+                Maximum total size: {{ max_mb }} MB.
+                Scanned PDFs have no text, so upload their pages as images.
+            </p>
+
+        </div>
+
+
+        <!-- 3) PASTED TEXT -->
+
+        <label for="content">
+            Or paste study material
         </label>
 
         <textarea
+            id="content"
             name="content"
-            rows="15"
+            rows="10"
             placeholder="Paste your notes here..."
-            required
         ></textarea>
 
 
@@ -120,9 +219,7 @@
                 SCRIBENEST AI // RESULT
             </div>
 
-            <div class="result-text">
-                {{ result }}
-            </div>
+            <div class="result-text">{{ result }}</div>
 
         </section>
 

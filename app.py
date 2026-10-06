@@ -2,6 +2,8 @@ import os
 import uuid
 import requests
 import io
+import base64
+import mimetypes
 import psycopg2
 import psycopg2.extras
 from authlib.integrations.flask_client import OAuth
@@ -33,7 +35,9 @@ from flask import (
     session,
     flash,
     jsonify,
-    send_from_directory
+    send_from_directory,
+    Response,
+    abort
 )
 
 from werkzeug.security import (
@@ -119,10 +123,10 @@ ALLOWED_DOC_EXTENSIONS = {
     "pptx"
 }
 
-# Maximum file size = 20 MB
-app.config["MAX_CONTENT_LENGTH"] = (
-    20 * 1024 * 1024
-)
+# Vercel serverless functions reject request bodies above ~4.5 MB,
+# so cap uploads at 4 MB there and 20 MB when running locally.
+MAX_UPLOAD_MB = 4 if os.environ.get("VERCEL") else 20
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 
 # =========================================================
@@ -442,6 +446,7 @@ def home():
 # =========================================================
 
 @app.route("/subjects")
+@login_required
 def public_subjects():
     curriculum = {
         ctype: [subject for group in groups.values() for subject in group]
@@ -450,7 +455,7 @@ def public_subjects():
     return render_template("subjects.html", curriculum=curriculum)
 
 
-@app.route("/subjects/`")
+@app.route("/subjects/<code>")
 def subject_detail(code):
     if "user_id" not in session:
         flash("Please login first to view notes and materials for this subject.", "error")
@@ -970,43 +975,52 @@ def upload_note():
             flash(f"Supabase Upload Failed ({type(e).__name__}): {str(e)}", "error")
             return redirect(url_for("upload_note"))
 
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO notes
-            (
-                user_id,
-                title,
-                subject,
-                program,
-                curriculum_type,
-                content,
-                tags,
-                is_public,
-                file_name,
-                file_path,
-                file_type
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO notes
+                (
+                    user_id,
+                    title,
+                    subject,
+                    program,
+                    curriculum_type,
+                    content,
+                    tags,
+                    is_public,
+                    file_name,
+                    file_path,
+                    file_type
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    session["user_id"],
+                    title,
+                    subject,
+                    program,
+                    curriculum_type,
+                    content,
+                    tags,
+                    is_public,
+                    safe_filename,
+                    database_file_path,
+                    file_type
+                )
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                session["user_id"],
-                title,
-                subject,
-                program,
-                curriculum_type,
-                content,
-                tags,
-                is_public,
-                safe_filename,
-                database_file_path,
-                file_type
-            )
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            app.logger.exception("Saving uploaded note failed")
+            try:
+                supabase.storage.from_("notes-bucket").remove([storage_path])
+            except Exception:
+                pass
+            flash(f"Could not save the note ({type(e).__name__}): {e}", "error")
+            return redirect(url_for("upload_note"))
 
         flash("Your note has been uploaded successfully to Supabase cloud storage!", "success")
         return redirect(url_for("dashboard"))
@@ -1015,7 +1029,7 @@ def upload_note():
         "upload_note.html",
         programs=PROGRAMMES,
         curricula=PROGRAMME_CURRICULA,
-        max_mb=20
+        max_mb=MAX_UPLOAD_MB
     )
 
 
@@ -1023,7 +1037,9 @@ def upload_note():
 # VIEW NOTE
 # =========================================================
 
-@app.route("/notes/")
+@app.route(
+    "/notes/<int:note_id>"
+)
 @login_required
 def view_note(note_id):
     conn = get_db()
@@ -1074,10 +1090,47 @@ def view_note(note_id):
 
 
 # =========================================================
+# SERVE NOTE ATTACHMENT INLINE (VIEW IN BROWSER)
+# =========================================================
+
+@app.route("/notes/<int:note_id>/file")
+@login_required
+def note_file(note_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT user_id, is_public, file_name, file_path FROM notes WHERE id = %s",
+        (note_id,)
+    )
+    note = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not note or not note["file_path"]:
+        abort(404)
+    if note["user_id"] != session["user_id"] and not note["is_public"]:
+        abort(403)
+
+    upstream = requests.get(note["file_path"], timeout=20)
+    if upstream.status_code != 200:
+        abort(502)
+
+    mime = mimetypes.guess_type(note["file_name"] or "")[0] or "application/octet-stream"
+    return Response(
+        upstream.content,
+        mimetype=mime,
+        headers={"Content-Disposition": f'inline; filename="{note["file_name"]}"'}
+    )
+
+
+# =========================================================
 # EDIT NOTE
 # =========================================================
 
-@app.route("/notes//edit", methods=["GET", "POST"])
+@app.route(
+    "/notes/<int:note_id>/edit",
+    methods=["GET", "POST"]
+)
 @login_required
 def edit_note(note_id):
     conn = get_db()
@@ -1191,7 +1244,10 @@ def edit_note(note_id):
 # DELETE NOTE
 # =========================================================
 
-@app.route("/notes//delete", methods=["POST"])
+@app.route(
+    "/notes/<int:note_id>/delete",
+    methods=["POST"]
+)
 @login_required
 def delete_note(note_id):
     conn = get_db()
@@ -1224,7 +1280,10 @@ def delete_note(note_id):
 # FAVORITE NOTE
 # =========================================================
 
-@app.route("/notes//favorite", methods=["POST"])
+@app.route(
+    "/notes/<int:note_id>/favorite",
+    methods=["POST"]
+)
 @login_required
 def favorite_note(note_id):
     conn = get_db()
@@ -1388,6 +1447,11 @@ def vault():
 # AI TOOLS (WITH SUPABASE PDF FILE EXTRACTION SUPPORT)
 # =========================================================
 
+AI_MAX_CHARS = 30000      # text sent to the model (keeps cost and latency sane)
+AI_MAX_IMAGES = 4         # images sent per request
+AI_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
 def get_ai_client():
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
     if not api_key or OpenAI is None:
@@ -1397,7 +1461,8 @@ def get_ai_client():
     )
 
 
-def ask_ai(prompt):
+def ask_ai(prompt, images=None):
+    """images = list of (mime_type, base64_string); sent to the vision-capable model."""
     client = get_ai_client()
     if client is None:
         return (
@@ -1405,12 +1470,20 @@ def ask_ai(prompt):
             "Add your OPENAI_API_KEY to your environment variables."
         )
 
+    if images:
+        user_content = [{"type": "text", "text": prompt}] + [
+            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+            for mime, b64 in images
+        ]
+    else:
+        user_content = prompt
+
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are ScribeNest AI, a helpful study assistant."},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": user_content}
             ]
         )
         return response.choices[0].message.content
@@ -1419,6 +1492,43 @@ def ask_ai(prompt):
             "AI request failed: "
             + str(error)
         )
+
+
+def collect_ai_material(uploaded_files):
+    """Turn uploaded PDFs / images / text files into (texts, images, notices)."""
+    texts, images, notices = [], [], []
+
+    for f in uploaded_files:
+        if not f or not f.filename:
+            continue
+
+        name = f.filename
+        ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+        data = f.read()
+        if not data:
+            continue
+
+        if ext == "pdf":
+            text = extract_text_from_pdf(data)
+            if text.strip():
+                texts.append(f"--- {name} ---\n{text}")
+            else:
+                notices.append(
+                    f"{name}: no readable text found (it may be a scanned PDF). "
+                    "Upload its pages as images instead."
+                )
+        elif ext in AI_IMAGE_EXTENSIONS:
+            if len(images) >= AI_MAX_IMAGES:
+                notices.append(f"{name}: skipped (maximum {AI_MAX_IMAGES} images per request).")
+            else:
+                mime = mimetypes.guess_type(name)[0] or "image/jpeg"
+                images.append((mime, base64.b64encode(data).decode("ascii")))
+        elif ext == "txt":
+            texts.append(f"--- {name} ---\n" + data.decode("utf-8", errors="ignore"))
+        else:
+            notices.append(f"{name}: unsupported file type (use PDF, image or .txt).")
+
+    return texts, images, notices
 
 
 @app.route(
@@ -1430,37 +1540,75 @@ def ai_tools():
     result = None
 
     if request.method == "POST":
-        content = request.form.get("content", "").strip()
+        pasted = request.form.get("content", "").strip()
         action = request.form.get("action")
-        note_id = request.form.get("note_id")
+        note_id = request.form.get("note_id", "").strip()
 
-        if note_id:
+        texts = [pasted] if pasted else []
+        images = []
+        notices = []
+
+        # 1) A saved note chosen from the dropdown (its text + attached PDF/image)
+        if note_id.isdigit():
             conn = get_db()
             cur = conn.cursor()
-            cur.execute("SELECT * FROM notes WHERE id = %s AND (user_id = %s OR is_public = 1)", (note_id, session["user_id"]))
+            cur.execute(
+                "SELECT * FROM notes WHERE id = %s AND (user_id = %s OR is_public = 1)",
+                (int(note_id), session["user_id"])
+            )
             note = cur.fetchone()
             cur.close()
             conn.close()
-            if note:
-                if note["file_type"] == "pdf" and note["file_path"]:
-                    try:
-                        res = requests.get(note["file_path"])
-                        if res.status_code == 200:
-                            pdf_extracted = extract_text_from_pdf(res.content)
-                            content = pdf_extracted + "\n" + note["content"]
-                    except Exception:
-                        content = note["content"]
-                else:
-                    content = note["content"]
 
-        if not content:
+            if note:
+                if note["content"]:
+                    texts.append(note["content"])
+
+                if note["file_path"]:
+                    try:
+                        res = requests.get(note["file_path"], timeout=20)
+                        if res.status_code == 200:
+                            if note["file_type"] == "pdf":
+                                pdf_text = extract_text_from_pdf(res.content)
+                                if pdf_text.strip():
+                                    texts.append(f"--- {note['file_name']} ---\n{pdf_text}")
+                                else:
+                                    notices.append(f"{note['file_name']}: no readable text found in this PDF.")
+                            elif note["file_type"] == "image":
+                                mime = mimetypes.guess_type(note["file_name"] or "")[0] or "image/jpeg"
+                                images.append((mime, base64.b64encode(res.content).decode("ascii")))
+                            else:
+                                notices.append("Word/PowerPoint attachments can't be read by AI yet.")
+                        else:
+                            notices.append("Could not download the attached file for that note.")
+                    except Exception:
+                        notices.append("Could not read the attached file for that note.")
+
+        # 2) Files uploaded straight into the AI page
+        up_texts, up_images, up_notices = collect_ai_material(request.files.getlist("files"))
+        texts += up_texts
+        images += up_images[:max(0, AI_MAX_IMAGES - len(images))]
+        notices += up_notices
+
+        content = "\n\n".join(texts)[:AI_MAX_CHARS]
+
+        for message in notices:
+            flash(message, "error")
+
+        if not content and not images:
             flash(
-                "Please enter study material or select a note with content.",
+                "Please paste some text, upload a PDF/image, or choose a saved note.",
                 "error"
             )
             return redirect(
                 url_for("ai_tools")
             )
+
+        material = content or "(The study material is in the attached image(s).)"
+        image_hint = (
+            "\nThe material may also include attached images of notes - read them too.\n"
+            if images else ""
+        )
 
         if action == "summary":
             prompt = f"""
@@ -1471,9 +1619,9 @@ Give:
 2. Important concepts
 3. Key points
 4. Exam-focused points
-
+{image_hint}
 Study material:
-{content}
+{material}
 """
         elif action == "questions":
             prompt = f"""
@@ -1485,9 +1633,9 @@ Include a mixture of:
 - Conceptual questions
 - Difference questions
 - Application questions
-
+{image_hint}
 Study material:
-{content}
+{material}
 """
         elif action == "flashcards":
             prompt = f"""
@@ -1497,40 +1645,35 @@ following material.
 Format:
 Q:
 A:
-
+{image_hint}
 Study material:
-{content}
+{material}
 """
         elif action == "ask":
-            question = (
-                request.form.get(
-                    "question",
-                    ""
-                )
-                .strip()
-            )
+            question = request.form.get("question", "").strip()
             prompt = f"""
 You are ScribeNest AI.
 Answer the student's question using
 ONLY the provided study material as
 the main source.
-
+{image_hint}
 Study material:
-{content}
+{material}
 
 Student question:
 {question}
 """
         else:
-            prompt = content
+            prompt = material
 
-        result = ask_ai(
-            prompt
-        )
+        result = ask_ai(prompt, images)
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id, title, subject FROM notes WHERE user_id = %s ORDER BY updated_at DESC", (session["user_id"],))
+    cur.execute(
+        "SELECT id, title, subject FROM notes WHERE user_id = %s ORDER BY updated_at DESC",
+        (session["user_id"],)
+    )
     user_notes = cur.fetchall()
     cur.close()
     conn.close()
@@ -1538,7 +1681,8 @@ Student question:
     return render_template(
         "ai.html",
         result=result,
-        notes=user_notes
+        notes=user_notes,
+        max_mb=MAX_UPLOAD_MB
     )
 
 
@@ -1549,9 +1693,11 @@ Student question:
 @app.errorhandler(413)
 def file_too_large(error):
     flash(
-        "File is too large. Maximum size is 20 MB.",
+        f"File is too large. Maximum total upload size is {MAX_UPLOAD_MB} MB.",
         "error"
     )
+    if request.endpoint == "ai_tools":
+        return redirect(url_for("ai_tools"))
     return redirect(
         url_for("upload_note")
     )
