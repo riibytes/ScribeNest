@@ -49,10 +49,6 @@ from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
 
 
 # =========================================================
@@ -1451,51 +1447,72 @@ AI_MAX_IMAGES = 4         # images sent per request
 AI_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 
-def get_ai_client():
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
-    if not api_key or OpenAI is None:
-        return None
-    return OpenAI(
-        api_key=api_key
-    )
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 
 
 def ask_ai(prompt, images=None):
-    """images = list of (mime_type, base64_string); sent to the vision-capable model."""
-    try:
-        client = get_ai_client()
-    except Exception as error:
-        return (
-            f"AI client could not start ({type(error).__name__}): {error}"
-        )
-    if client is None:
+    """Send the prompt (plus optional images / PDFs) to Google Gemini.
+
+    images = list of (mime_type, base64_string); mime can be an image type or application/pdf.
+    """
+    api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "").strip()
+    if not api_key:
         return (
             "AI is not configured yet. "
-            "Add your OPENAI_API_KEY to your environment variables."
+            "Add your GEMINI_API_KEY to your environment variables."
         )
 
-    if images:
-        user_content = [{"type": "text", "text": prompt}] + [
-            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
-            for mime, b64 in images
-        ]
-    else:
-        user_content = prompt
+    parts = [{"text": prompt}]
+    for mime, b64 in (images or []):
+        parts.append({"inline_data": {"mime_type": mime, "data": b64}})
+
+    payload = {
+        "system_instruction": {
+            "parts": [{"text": "You are ScribeNest AI, a helpful study assistant."}]
+        },
+        "contents": [{"role": "user", "parts": parts}],
+    }
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are ScribeNest AI, a helpful study assistant."},
-                {"role": "user", "content": user_content}
-            ]
+        resp = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+            json=payload,
+            timeout=55,
         )
-        return response.choices[0].message.content
-    except Exception as error:
-        return (
-            "AI request failed: "
-            + str(error)
+    except requests.RequestException as error:
+        return f"AI request failed ({type(error).__name__}): {error}"
+
+    try:
+        data = resp.json()
+    except ValueError:
+        return f"AI request failed: unexpected response (HTTP {resp.status_code})."
+    if not isinstance(data, dict):
+        return f"AI request failed: unexpected response (HTTP {resp.status_code})."
+
+    if resp.status_code != 200:
+        err = data.get("error")
+        message = err.get("message", "") if isinstance(err, dict) else ""
+        if resp.status_code == 429:
+            return (
+                "Gemini free-tier limit reached. Wait a minute and try again. "
+                f"({message})"
+            )
+        return f"AI request failed (HTTP {resp.status_code}): {message}"
+
+    candidates = data.get("candidates") or []
+    text = ""
+    if candidates:
+        content = candidates[0].get("content") or {}
+        text = "".join(p.get("text", "") for p in content.get("parts", []))
+
+    if not text.strip():
+        reason = (data.get("promptFeedback") or {}).get("blockReason") or (
+            candidates[0].get("finishReason") if candidates else ""
         )
+        return f"The AI returned no text ({reason or 'unknown reason'}). Try different material."
+
+    return text
 
 
 def collect_ai_material(uploaded_files):
@@ -1516,14 +1533,14 @@ def collect_ai_material(uploaded_files):
             text = extract_text_from_pdf(data)
             if text.strip():
                 texts.append(f"--- {name} ---\n{text}")
+            elif len(images) >= AI_MAX_IMAGES:
+                notices.append(f"{name}: skipped (maximum {AI_MAX_IMAGES} files per request).")
             else:
-                notices.append(
-                    f"{name}: no readable text found (it may be a scanned PDF). "
-                    "Upload its pages as images instead."
-                )
+                # Scanned PDF: let Gemini read the pages visually
+                images.append(("application/pdf", base64.b64encode(data).decode("ascii")))
         elif ext in AI_IMAGE_EXTENSIONS:
             if len(images) >= AI_MAX_IMAGES:
-                notices.append(f"{name}: skipped (maximum {AI_MAX_IMAGES} images per request).")
+                notices.append(f"{name}: skipped (maximum {AI_MAX_IMAGES} files per request).")
             else:
                 mime = mimetypes.guess_type(name)[0] or "image/jpeg"
                 images.append((mime, base64.b64encode(data).decode("ascii")))
@@ -1578,7 +1595,7 @@ def ai_tools():
                                     if pdf_text.strip():
                                         texts.append(f"--- {note['file_name']} ---\n{pdf_text}")
                                     else:
-                                        notices.append(f"{note['file_name']}: no readable text found in this PDF.")
+                                        images.append(("application/pdf", base64.b64encode(res.content).decode("ascii")))
                                 elif note["file_type"] == "image":
                                     mime = mimetypes.guess_type(note["file_name"] or "")[0] or "image/jpeg"
                                     images.append((mime, base64.b64encode(res.content).decode("ascii")))
@@ -1609,9 +1626,9 @@ def ai_tools():
                     url_for("ai_tools")
                 )
 
-            material = content or "(The study material is in the attached image(s).)"
+            material = content or "(The study material is in the attached file(s).)"
             image_hint = (
-                "\nThe material may also include attached images of notes - read them too.\n"
+                "\nThe material may also include attached images or PDF files of notes - read them too.\n"
                 if images else ""
             )
 
