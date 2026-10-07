@@ -1447,7 +1447,7 @@ AI_MAX_IMAGES = 4         # images sent per request
 AI_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 
 def ask_ai(prompt, images=None):
