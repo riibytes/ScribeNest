@@ -1442,12 +1442,12 @@ def vault():
 # AI TOOLS (WITH SUPABASE PDF FILE EXTRACTION SUPPORT)
 # =========================================================
 
-AI_MAX_CHARS = 30000      # text sent to the model (keeps cost and latency sane)
+AI_MAX_CHARS = 15000      # text sent to the model (keeps cost and latency sane)
 AI_MAX_IMAGES = 4         # images sent per request
 AI_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def ask_ai(prompt, images=None):
@@ -1471,17 +1471,34 @@ def ask_ai(prompt, images=None):
             "parts": [{"text": "You are ScribeNest AI, a helpful study assistant."}]
         },
         "contents": [{"role": "user", "parts": parts}],
+        "generationConfig": {
+            "maxOutputTokens": 2048,
+            "thinkingConfig": {"thinkingBudget": 0},
+        },
     }
 
-    try:
-        resp = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
-            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-            json=payload,
-            timeout=55,
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+
+    resp = None
+    last_error = None
+    for attempt in range(2):  # one retry on timeout / temporary overload
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=(10, 40))
+        except requests.RequestException as error:
+            last_error = error
+            resp = None
+            continue
+        if resp.status_code in (500, 503):
+            last_error = None
+            continue
+        break
+
+    if resp is None:
+        return (
+            "The AI took too long to respond. Try a smaller file or less text. "
+            f"({type(last_error).__name__ if last_error else 'no response'})"
         )
-    except requests.RequestException as error:
-        return f"AI request failed ({type(error).__name__}): {error}"
 
     try:
         data = resp.json()
